@@ -13,7 +13,7 @@ define([
 	,   playerHeight    = unit>>1
 	,   fov             = 90
 	,   fovRad          = (fov * Math.PI) / 180
-	,   halfFovRad      = fovRad>>1
+	,   halfFovRad      = fovRad / 2
 	,   frustumWidth    = Shared.canvas.width
 	,   frustumHeight   = Shared.canvas.height
 	,   rayAngle        = fov / frustumWidth
@@ -58,7 +58,7 @@ define([
 	// http://www.permadi.com/tutorial/raycast/rayc7.html
 	function cast() {
 		var i           = 0
-		,   currRay     = player.angle - halfFovRad
+		,   currRay     = player.angle + halfFovRad
 		,   tanRay      = null                               // used during cast
 		,   sinRay      = null
 		,   cosRay      = null
@@ -99,7 +99,7 @@ define([
 				horizXIncr = unit/tanRay;
 
 				// cast for horizontal intercepts or edge of level
-				while (castY > 0 && castY << unitShift < Level.current.map.length && !horizHit) {
+				while (castY > 0 && castY >> unitShift < Level.current.map.length && !horizHit) {
 					castY += horizYIncr;
 					castX += horizXIncr;
 					if (tileAt(castX, castY) > 0) {
@@ -108,7 +108,7 @@ define([
 				}
 			}
 
-			horizDist = (horizDist) ? Math.abs(player.x - horizHit.x) / cosRay : 0;
+			horizDist = (horizHit) ? Math.abs(player.x - horizHit.x) / cosRay : 0;
 
 			// get first vertical intercept
 			castX = vertStartX;
@@ -120,7 +120,7 @@ define([
 				vertYIncr = unit * tanRay;
 
 				// check vertical intercepts
-				while (castX > 0 && castX * unit < Level.current.map[0].length && !vertHit) {
+				while (castX > 0 && castX >> unitShift < Level.current.map[0].length && !vertHit) {
 					castX += vertXIncr;
 					castY += vertYIncr;
 					if (tileAt(castX, castY) > 0) {
@@ -131,15 +131,18 @@ define([
 
 			vertDist = (vertHit) ? Math.abs(player.x - vertHit.x) / cosRay : 0;
 			
-			dist[i] = (vertDist < horizDist) ? vertDist : horizDist;
+			//dist[i] = (vertDist < horizDist) ? vertDist : horizDist;
+			dist[i] = (vertDist < horizDist) ? vertHit : horizHit;
+			//dist[i] = currRay;
 
-        	currRay += rayAngleRad;
+
+        	currRay -= rayAngleRad;
 		}
 
 		return dist;
 	}
 
-	function draw2d () {
+	function draw2d (rays) {
 		var i, j;
 		Shared.ctx.clearRect(0,0, Shared.canvas.width, Shared.canvas.height); 
 		Shared.ctx.save();
@@ -166,6 +169,16 @@ define([
 		Shared.ctx.stroke();
 		Shared.ctx.closePath();
 
+		Shared.ctx.strokeStyle = "orange";
+		Shared.ctx.lineWidth = 2.5;
+		for ( i = 0; i < rays.length; i++ ) {
+			if(!rays[i] || typeof rays[i] !== 'object') { continue; }
+			Shared.ctx.beginPath();
+			Shared.ctx.moveTo(player.x, player.y);
+			Shared.ctx.lineTo(rays[i].x, rays[i].y);
+			Shared.ctx.stroke();
+			Shared.ctx.closePath();
+		}
 		Shared.ctx.restore();
 	}
 
@@ -174,12 +187,15 @@ define([
 		var rays = cast();
 
 
-		draw2d();
+		draw2d(rays);
 
 
 	});
 	window.addEventListener('blur', function () {
 		Wee.pause();
+	});
+	window.addEventListener('focus', function () {
+		Wee.start();
 	});
 	Wee.start();
 });
