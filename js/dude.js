@@ -8,12 +8,10 @@ define(['shared'], function(Shared) {
 		},
 		left: function () {
 			this.angle = (this.angle + this.rotSpeed) % Shared.twoPI;
-			console.log(Shared.radToDeg(this.angle)); 
 		},
 		right: function () {
 			var next = (this.angle - this.rotSpeed);
 			this.angle = (next < 0) ? Shared.twoPI - next : next;
-			console.log(Shared.radToDeg(this.angle)); 
 		},
 		forward: function() {
 			this.x += this.moveSpeed * Math.cos(this.angle);

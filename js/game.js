@@ -1,5 +1,8 @@
 // TODO: trig function table generation
 // TODO: add strip width configuration ability (degrade visuals - less rays more perf)
+// TODO: add textures
+// TODO: add translucency
+// TODO: add sectors
 define([
 		'shared',
 		'wee',
@@ -93,7 +96,6 @@ define([
             vertHit = null;
             horizHit = null;
             fishCorrect = Math.cos(player.angle - currRay);
-            //fishCorrect = 1;
 
 			horizYIncr  = (sinRay > 0) ? -unit : unit; // casting up - negative Y 
 			vertXIncr   = (cosRay > 0) ? unit : -unit;  // castingright - positive X
@@ -166,6 +168,7 @@ define([
 			if(dist[i]) {
 				dist[i].dist = (vertDist < horizDist) ? vertDist * fishCorrect : horizDist * fishCorrect;
 				dist[i].angle = currRay;
+				dist[i].tile = tileAt(dist.x, dist.y)
 				dist[i].dir = (vertDist < horizDist) ? "vert" : "horiz";
 				dist[i].vert = (vertHit) ? vertHit : null;
 				dist[i].horiz = (horizHit) ? horizHit : null;
@@ -259,11 +262,15 @@ define([
 		draw3d(rays, player, 1);
     	//draw2d(rays, player, .1);
 	});
+
 	document.body.addEventListener('blur', function () {
 		Wee.pause();
 	});
 	document.body.addEventListener('focus', function () {
 		Wee.start();
 	});
-	Wee.start();
+	
+	Shared.loadAssets(['img/terrain.png'], function () {
+		Wee.start();
+	});
 });

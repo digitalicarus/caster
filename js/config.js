@@ -1,7 +1,8 @@
 define([], function () {
 	return {
-		width: 320,
-		height: 200,
+		// gameboy advance resolution :)
+		width: 240,
+		height: 160,
 		canvasBgColor: "black",
 		assets: []
 	};
