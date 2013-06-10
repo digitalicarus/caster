@@ -1,6 +1,7 @@
 define(['config', 
 		'class',
-], function(config, Class) {
+		'aug'
+], function(config, Class, aug) {
 	var doc           = document
 	,   body          = doc.body
 	,   createEle     = function(ele) { return doc.createElement(ele) }
@@ -52,9 +53,11 @@ define(['config',
 		ctx:    ctx,
 		config: config,
 		Class:  Class,
+		aug: aug,
 		degToRad: degToRad,
 		radToDeg: radToDeg,
-		twoPI: 2*Math.PI
+		twoPI: 2*Math.PI,
+		threePI: 3*Math.PI
 	};
 
 });

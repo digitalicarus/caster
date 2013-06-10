@@ -1,8 +1,10 @@
 requirejs.config({
 	paths: {
-		"class": "vendor/class"
+		"class": "vendor/class",
+		"aug": "vendor/aug"
 	},
 	shim: {
+		"aug": { exports: "aug" },
 		"class": { exports: "Class" }
 	}
 });

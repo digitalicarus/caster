@@ -8,12 +8,12 @@ define(['shared'], function(Shared) {
 		},
 		left: function () {
 			this.angle = (this.angle + this.rotSpeed) % Shared.twoPI;
-			console.log(this.angle);
+			console.log(Shared.radToDeg(this.angle)); 
 		},
 		right: function () {
 			var next = (this.angle - this.rotSpeed);
-			this.angle = (next < 0) ? next + Shared.twoPI : next;
-			console.log(this.angle);
+			this.angle = (next < 0) ? Shared.twoPI - next : next;
+			console.log(Shared.radToDeg(this.angle)); 
 		},
 		forward: function() {
 			this.x += this.moveSpeed * Math.cos(this.angle);
@@ -23,8 +23,8 @@ define(['shared'], function(Shared) {
 			this.x -= this.moveSpeed * Math.cos(this.angle);
 			this.y -= this.moveSpeed * -Math.sin(this.angle);
 		},
-		moveSpeed: 2,        // pixels per tick
-		rotSpeed: Math.PI/60 // radians per tick - 30 frames to turn 180deg 
+		moveSpeed: 5,        // pixels per tick
+		rotSpeed: Math.PI/80 // radians per tick - 30 frames to turn 180deg 
 	});
 
 	return ret;
