@@ -1,5 +1,4 @@
 // TODO: trig function table generation
-// TODO: add strip width configuration ability (degrade visuals - less rays more perf)
 // TODO: add textures
 // TODO: add translucency
 // TODO: add sectors
@@ -16,11 +15,12 @@ define([
 	,   unit               = 2<<unitPow
 	,   playerHeight       = unit>>1
 	,   fov                = 64
+	,   stripWidth         = 4
 	,   fovRad             = (fov * Math.PI) / 180
 	,   halfFovRad         = fovRad / 2
 	,   frustumWidth       = Shared.canvas.width
 	,   frustumHeight      = Shared.canvas.height
-	,   rayAngle           = fov / frustumWidth
+	,   rayAngle           = fov * stripWidth / frustumWidth 
 	,   rayAngleRad        = (rayAngle * Math.PI) / 180
 	,   frustumCenter      = { x: frustumWidth>>1, y: frustumHeight>>1 }
 	,   frustumDistance    = (frustumWidth>>1) / Math.tan(fov/2)
@@ -88,7 +88,7 @@ define([
 		,   dist        = []
 		;
         
-        for (i = 0; i < frustumWidth; i ++) {
+        for (i = 0; i < frustumWidth; i += stripWidth) {
             tanRay = Math.tan(currRay);
             tanRayInv = 1/tanRay; // reciprocal mult is faster than divide in some browsers
             sinRay = Math.sin(currRay);
@@ -242,8 +242,8 @@ define([
 
 		Shared.ctx.save();
 		Shared.ctx.strokeStyle = "blue";
-		Shared.ctx.lineWidth = 1;
-		for ( i = 0; i < rays.length; i++ ) {
+		Shared.ctx.lineWidth = stripWidth;
+		for ( i = 0; i < rays.length; i+= stripWidth ) {
 			stripHeight = defaultStripFactor / rays[i].dist;
 			Shared.ctx.beginPath();
 			Shared.ctx.moveTo(i, canvasMiddle - stripHeight / 2);
@@ -260,7 +260,7 @@ define([
 
 		Shared.ctx.clearRect(0,0, Shared.canvas.width, Shared.canvas.height); 
 		draw3d(rays, player, 1);
-    	//draw2d(rays, player, .1);
+    	draw2d(rays, player, .1);
 	});
 
 	document.body.addEventListener('blur', function () {
