@@ -1,3 +1,4 @@
+// TODO: add strafing
 define(['shared'], function(Shared) {
 	
 	var ret = Shared.Class.extend({

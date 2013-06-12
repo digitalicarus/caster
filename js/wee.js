@@ -9,7 +9,7 @@ define([], function(){
 	,   frameCounter  = 0
 	,   droppedFrames = 0
 	,   interval      = null
-	,   paused        = false
+	,   paused        = true
 	,   initted       = false
 	,   intervalRate  = Math.floor(1000/FPS) - 1
 	,   ciCallback    = function(){}
@@ -119,22 +119,26 @@ define([], function(){
 		},
 		start:           function() {
 			//Init();
-			paused = false;
-			if(requestAnimFrame) {
-				(function animloop(){
-					if(!paused) {
-						interval = requestAnimFrame(animloop);
-						GameLoop();                          
-					}
-				})();
-			} else {
-				interval = setInterval(GameLoop, intervalRate);
+			if (paused) {
+				paused = false;
+				if(requestAnimFrame) {
+					(function animloop(){
+						if(!paused) {
+							interval = requestAnimFrame(animloop);
+							GameLoop();                          
+						}
+					})();
+				} else {
+					interval = setInterval(GameLoop, intervalRate);
+				}
 			}
 		},
 		pause:           function() {
-			if(interval) { clearInterval(interval); }
-			if(requestAnimFrame) { cancelAnimFrame(interval); }
-			paused = true;
+			if (!paused) {
+				if(interval) { clearInterval(interval); }
+				if(requestAnimFrame) { cancelAnimFrame(interval); }
+				paused = true;
+			}
 		}
 	}; // public
 });

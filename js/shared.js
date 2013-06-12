@@ -14,7 +14,7 @@ define(['config',
 			img: ['png','gif','jpeg',],
 			audio: ['ogg', 'mp3', 'wav']
 		}
-	,   globalAssets = []
+	,   globalAssets = {}
 	;
 
 	canvas.width = canvasWidth;
@@ -104,6 +104,7 @@ define(['config',
 		radToDeg: radToDeg,
 		loadAssets: loadAssets,
 		twoPI: 2*Math.PI,
+		assets: globalAssets,
 		threePI: 3*Math.PI
 	};
 

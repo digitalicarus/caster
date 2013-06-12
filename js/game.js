@@ -9,13 +9,17 @@ define([
 		'level',
 		'player'
 ], function (Shared, Wee, Keys, Level, Player) {
-	var twoPI             = Math.PI>>1
+	var texBuf             = document.createElement('canvas')
+	,   texBufCtx          = texBuf.getContext('2d')
+	,   textureSrc         = 'img/terrain.png'
+	,   twoPI              = Math.PI>>1
 	,   unitPow            = 5
 	,   unitShift          = unitPow + 1
 	,   unit               = 2<<unitPow
 	,   playerHeight       = unit>>1
 	,   fov                = 64
-	,   stripWidth         = 4
+	,   stripShift         = 2
+	,   stripWidth         = 1<<stripShift
 	,   fovRad             = (fov * Math.PI) / 180
 	,   halfFovRad         = fovRad / 2
 	,   frustumWidth       = Shared.canvas.width
@@ -85,10 +89,12 @@ define([
 		,   vertHit     = null  // point
 		,   horizDist   = null
 		,   vertDist    = null
-		,   dist        = []
+		,   rays        = []
+		,   rayObj      = {}
 		;
         
         for (i = 0; i < frustumWidth; i += stripWidth) {
+        	rayObj = {};
             tanRay = Math.tan(currRay);
             tanRayInv = 1/tanRay; // reciprocal mult is faster than divide in some browsers
             sinRay = Math.sin(currRay);
@@ -158,35 +164,36 @@ define([
 			//vertDist = (vertHit) ? Math.abs(-player.x + vertHit.x / cosRay) : Infinity;
 			vertDist = (vertHit) ? Math.sqrt(Math.pow(player.x - vertHit.x, 2) + Math.pow(player.y - vertHit.y, 2)) : Infinity; // chance to divide by 0 FIXME
 			
-			//dist[i] = (vertDist < horizDist) ? vertDist : horizDist;
+			//rayObj = (vertDist < horizDist) ? vertDist : horizDist;
 
 			//vertHit.angle = currRay;
 			//horizHit.angle = currRay;
-			dist[i] = (vertDist < horizDist) ? vertHit : horizHit;
-			//dist[i] = Shared.aug({},vertHit);
-			//dist[i] = currRay;
-			if(dist[i]) {
-				dist[i].dist = (vertDist < horizDist) ? vertDist * fishCorrect : horizDist * fishCorrect;
-				dist[i].angle = currRay;
-				dist[i].tile = tileAt(dist.x, dist.y)
-				dist[i].dir = (vertDist < horizDist) ? "vert" : "horiz";
-				dist[i].vert = (vertHit) ? vertHit : null;
-				dist[i].horiz = (horizHit) ? horizHit : null;
-				dist[i].horizDist = horizDist;
-				dist[i].vertDist = vertDist;
+			rayObj = (vertDist < horizDist) ? vertHit : horizHit;
+			//rayObj = Shared.aug({},vertHit);
+			//rayObj = currRay;
+			if(rayObj) {
+				rayObj.dist = (vertDist < horizDist) ? vertDist * fishCorrect : horizDist * fishCorrect;
+				rayObj.angle = currRay;
+				rayObj.tile = tileAt(rayObj.x, rayObj.y)
+				rayObj.dir = (vertDist < horizDist) ? "vert" : "horiz";
+				rayObj.vert = (vertHit) ? vertHit : null;
+				rayObj.horiz = (horizHit) ? horizHit : null;
+				rayObj.horizDist = horizDist;
+				rayObj.vertDist = vertDist;
 			} else {
-				dist[i] = {
+				rayObj = {
 					x: player.x,
 					y: player.y,
 					angle: currRay
 				};
 			}
 
+			rays.push(rayObj);
 
         	currRay -= rayAngleRad;
 		}
 
-		return dist;
+		return rays;
 	}
 
 	// TODO: make minimap that draws only a configurable portion of the map around the player as center point
@@ -237,19 +244,39 @@ define([
 	function draw3d(rays, player, scale) {
 		var i            = 0
 		,   stripHeight  = 0
+		,   texStripLoc  = 0
+		,   ray          = null
 		,   canvasMiddle = Shared.canvas.height / 2
 		;
 
 		Shared.ctx.save();
 		Shared.ctx.strokeStyle = "blue";
 		Shared.ctx.lineWidth = stripWidth;
-		for ( i = 0; i < rays.length; i+= stripWidth ) {
-			stripHeight = defaultStripFactor / rays[i].dist;
+		for ( i = 0; i < rays.length; i++ ) {
+			ray = rays[i];
+			stripHeight = defaultStripFactor / ray.dist;
+
+			/*
 			Shared.ctx.beginPath();
 			Shared.ctx.moveTo(i, canvasMiddle - stripHeight / 2);
 			Shared.ctx.lineTo(i, canvasMiddle + stripHeight / 2);
 			Shared.ctx.stroke();
 			Shared.ctx.closePath();
+			*/
+			// Texture this mutha
+			Shared.ctx.drawImage(
+					Shared.assets[textureSrc],
+                    //((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
+                    (((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit))>>0) - (stripWidth>>1),
+                    0,
+                    stripWidth, //try sampling the whole strip width - then we'll try scaling 1px to width
+                    //1, //try sampling the whole strip width - then we'll try scaling 1px to width
+                    unit,
+                    i<<stripShift,
+                    canvasMiddle - stripHeight / 2,
+                    stripWidth,
+                    stripHeight
+			);
 		}
 		Shared.ctx.restore();
 	}
@@ -270,7 +297,8 @@ define([
 		Wee.start();
 	});
 	
-	Shared.loadAssets(['img/terrain.png'], function () {
+	Shared.loadAssets([textureSrc], function () {
+		texBufCtx.drawImage(Shared.assets[textureSrc], 0, 0);
 		Wee.start();
 	});
 });
