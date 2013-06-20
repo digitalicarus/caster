@@ -9,7 +9,8 @@ define([], function(){
 	,   frameCounter  = 0
 	,   droppedFrames = 0
 	,   interval      = null
-	,   paused        = true
+	,   paused        = true // internal state
+	,   extPause      = true // controlled by start/pause interface
 	,   initted       = false
 	,   intervalRate  = Math.floor(1000/FPS) - 1
 	,   ciCallback    = function(){}
@@ -29,14 +30,14 @@ define([], function(){
 	// will fire very rapidly. Don't waste much time in here at all!
 	// You can use this for collision detection etc. 
 	// Just check if you have already updated this render cycle and bail ASAP.
-	var Update = function() {
+	function Update() {
 		frameCounter++;
 		droppedFrames++;
 		upCallback();
-	};
+	}
 		   
 	// This is the one you really want. Draw the result of your state in here.
-	var Render = function() {
+	function Render() {
 		rate = (droppedFrames > 0) ? 
 			((rate+(FPS/(droppedFrames*2)))/2):
 			((rate + FPS)/2);
@@ -46,9 +47,9 @@ define([], function(){
 		// just render every N frames to avoid a jarring display
 		droppedFrames = -1;
 		rdCallback();
-	}; 
+	} 
 
-	var GameLoop = function() {
+	function GameLoop() {
 		var now = Date.now()/1000;
 		accrued += (now-last);
 		
@@ -59,15 +60,84 @@ define([], function(){
 		}
 		!paused && Render();
 		last = now;
-	};
+	}
 	
-	var Init = function() {
+	function Init() {
 		if(!initted) {
 			console.log(this);
 			initted = true;
 		}
-	};
+	}
+
+	function start() {
+		//Init();
+		if (paused) {
+			paused = false;
+			if(requestAnimFrame) {
+				(function animloop(){
+					if(!paused) {
+						interval = requestAnimFrame(animloop);
+						GameLoop();                          
+					}
+				})();
+			} else {
+				interval = setInterval(GameLoop, intervalRate);
+			}
+			console.log("start");
+		}
+	}
+
+	function pause() {
+		if (!paused) {
+			if(requestAnimFrame) { cancelAnimFrame(interval); }
+			else { clearInterval(interval); }
+			interval = undefined;
+			console.log("pause");
+			paused = true;
+		} 
+	}
 	
+	// http://stackoverflow.com/questions/1060008/is-there-a-way-to-detect-if-a-browser-window-is-not-currently-active
+	// window blurrin and pausin
+	(function () {
+		var hidden = "hidden"
+		,   h      = hidden
+		,   v      = "visible"
+		,   evtMap = { focus:v, focusin:v, pageshow:v, blur:h, focusout:h, pagehide:h }
+		,   state  = undefined
+		;
+
+		// Standards:
+		if (hidden in document)
+			document.addEventListener("visibilitychange", onchange);
+		else if ((hidden = "mozHidden") in document)
+			document.addEventListener("mozvisibilitychange", onchange);
+		else if ((hidden = "webkitHidden") in document)
+			document.addEventListener("webkitvisibilitychange", onchange);
+		else if ((hidden = "msHidden") in document)
+			document.addEventListener("msvisibilitychange", onchange);
+		// IE 9 and lower:
+		else if ('onfocusin' in document)
+			document.onfocusin = document.onfocusout = onchange;
+		else // always -- other older SHOULD be a param?
+			window.onpageshow = window.onpagehide = window.onfocus = window.onblur = onchange;
+
+		function onchange (e) {
+			e = e || window.event;
+			if (e.type in evtMap) {
+				state = evtMap[e.type];
+			} else {
+				state = (this[hidden]) ? h : v; // not so sure about this one
+			}
+
+			console.log("window state: " + state);
+
+			(state === h) && pause();
+			(state === v && !extPause) && start();
+		}
+		
+	})();
+
 	// shim layer with setTimeout fallback
 	var requestAnimFrame = (function(){
 		return  window.requestAnimationFrame       || 
@@ -75,14 +145,16 @@ define([], function(){
 				window.mozRequestAnimationFrame    || 
 				window.oRequestAnimationFrame      || 
 				window.msRequestAnimationFrame     
+		;
 	})();
 	
 	var cancelAnimFrame = (function(){
-		return  window.cancelAnimationFrame       || 
-				window.webkitCancelAnimationFrame || 
-				window.mozCancelAnimationFrame    || 
-				window.oCancelAnimationFrame      || 
-				window.msRequestAnimationFrame     
+		return  window.cancelAnimationFrame              || 
+				window.webkitCancelRequestAnimationFrame || window.webkitCancelAnimationFrame || 
+				window.mozCancelRequestAnimationFrame    || window.mozCancelAnimationFrame    || 
+				window.oCancelRequestAnimationFrame      || window.oCancelAnimationFrame      || 
+				window.msCancelRequestAnimationFrame     || window.msRequestAnimationFrame     
+		;
 	})();
 	
 	
@@ -118,27 +190,13 @@ define([], function(){
 			return paused;  
 		},
 		start:           function() {
-			//Init();
-			if (paused) {
-				paused = false;
-				if(requestAnimFrame) {
-					(function animloop(){
-						if(!paused) {
-							interval = requestAnimFrame(animloop);
-							GameLoop();                          
-						}
-					})();
-				} else {
-					interval = setInterval(GameLoop, intervalRate);
-				}
-			}
+			extPause = false;
+			start();
 		},
 		pause:           function() {
-			if (!paused) {
-				if(interval) { clearInterval(interval); }
-				if(requestAnimFrame) { cancelAnimFrame(interval); }
-				paused = true;
-			}
+			extPause = true;
+			pause();
 		}
+
 	}; // public
 });

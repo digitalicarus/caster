@@ -1,14 +1,20 @@
 // TODO: trig function table generation
-// TODO: add textures
+// TODO: fix texture offsets
 // TODO: add translucency
 // TODO: add sectors
+// TODO: mobile buttons
+// TODO: split out caster
+// TODO: split out renderer
+// TODO: split out var hell into configs
+// TODO: mobile config
 define([
 		'shared',
 		'wee',
 		'keys',
+		'touch',
 		'level',
 		'player'
-], function (Shared, Wee, Keys, Level, Player) {
+], function (Shared, Wee, Keys, Touch, Level, Player) {
 	var texBuf             = document.createElement('canvas')
 	,   texBufCtx          = texBuf.getContext('2d')
 	,   textureSrc         = 'img/terrain.png'
@@ -18,7 +24,7 @@ define([
 	,   unit               = 2<<unitPow
 	,   playerHeight       = unit>>1
 	,   fov                = 64
-	,   stripShift         = 2
+	,   stripShift         = 1
 	,   stripWidth         = 1<<stripShift
 	,   fovRad             = (fov * Math.PI) / 180
 	,   halfFovRad         = fovRad / 2
@@ -30,7 +36,15 @@ define([
 	,   frustumDistance    = (frustumWidth>>1) / Math.tan(fov/2)
 	,   defaultStripFactor = unit * frustumDistance
 	,   player             = null
+	,   sky                = Shared.ctx.createLinearGradient(0, 0, 0, Shared.canvas.height >> 1)
+	,   floor              = Shared.ctx.createLinearGradient(0, Shared.canvas.height >> 1, 0, Shared.canvas.height)
+	,   mobileCtrlSize     = Shared.canvas.width >> 2
 	;
+
+	sky.addColorStop(0, "rgb(90, 90, 200)");
+	sky.addColorStop(1, "rgb(255, 255, 255)");
+	floor.addColorStop(0, "rgb(50, 0, 0)");
+	floor.addColorStop(1, "rgb(0, 0, 0)");
 
 
 	player = new Player({
@@ -52,6 +66,43 @@ define([
 	Keys.on('d', function () {
 		player.right();
 	});
+
+
+	if(Shared.isMobile || true) {
+		Shared.controlsEle.appendChild(Touch.button({
+			symbol: '&#9668;',
+			size: mobileCtrlSize,
+			left: 5,
+			bottom: 5
+		}, function () {
+			player.left();
+		}));
+		Shared.controlsEle.appendChild(Touch.button({
+			symbol: '&#9658;',
+			size: mobileCtrlSize,
+			left: mobileCtrlSize + 5,
+			bottom: 5
+		}, function () {
+			player.right();
+		}));
+		Shared.controlsEle.appendChild(Touch.button({
+			symbol: '&#9650;',
+			size: mobileCtrlSize,
+			right: 5,
+			bottom: mobileCtrlSize + 5
+		}, function () {
+			player.forward();
+		}));
+		Shared.controlsEle.appendChild(Touch.button({
+			symbol: '&#9660;',
+			size: mobileCtrlSize,
+			right: 5,
+			bottom: 5
+		}, function () {
+			player.back();
+		}));
+	}
+ 
 
 	/**
 	 * returns tile data at location
@@ -232,9 +283,9 @@ define([
 			if(!rays[i] || typeof rays[i] !== 'object') { continue; }
 			Shared.ctx.beginPath();
 			Shared.ctx.moveTo(player.x + playerDotScale * .5, player.y + playerDotScale * .5);
-			//Shared.ctx.lineTo(rays[i].x, rays[i].y);
+			Shared.ctx.lineTo(rays[i].x, rays[i].y);
 			// DEBUG: vision cone
-			Shared.ctx.lineTo(player.x + rays[i].dist * Math.cos(rays[i].angle), player.y + rays[i].dist * -Math.sin(rays[i].angle));
+			//Shared.ctx.lineTo(player.x + rays[i].dist * Math.cos(rays[i].angle), player.y + rays[i].dist * -Math.sin(rays[i].angle));
 			Shared.ctx.stroke();
 			Shared.ctx.closePath();
 		}
@@ -257,20 +308,22 @@ define([
 			stripHeight = defaultStripFactor / ray.dist;
 
 			/*
+			 * Textureless
 			Shared.ctx.beginPath();
 			Shared.ctx.moveTo(i, canvasMiddle - stripHeight / 2);
 			Shared.ctx.lineTo(i, canvasMiddle + stripHeight / 2);
 			Shared.ctx.stroke();
 			Shared.ctx.closePath();
 			*/
+
 			// Texture this mutha
 			Shared.ctx.drawImage(
 					Shared.assets[textureSrc],
-                    //((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
-                    (((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit))>>0) - (stripWidth>>1),
+                    ((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
+                    //(((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit))>>0) - (stripWidth>>1),
                     0,
-                    stripWidth, //try sampling the whole strip width - then we'll try scaling 1px to width
-                    //1, //try sampling the whole strip width - then we'll try scaling 1px to width
+                    //stripWidth, //try sampling the whole strip width - then we'll try scaling 1px to width
+                    1,
                     unit,
                     i<<stripShift,
                     canvasMiddle - stripHeight / 2,
@@ -281,22 +334,25 @@ define([
 		Shared.ctx.restore();
 	}
 
-	Wee.setUpdate(function () {
+	Wee.setRender(function () {
 		Keys.run();
+		Touch.run();
 		var rays = cast();
 
+		Shared.ctx.save();
 		Shared.ctx.clearRect(0,0, Shared.canvas.width, Shared.canvas.height); 
-		draw3d(rays, player, 1);
-    	draw2d(rays, player, .1);
-	});
+		Shared.ctx.fillStyle = sky;
+		Shared.ctx.fillRect(0, 0, Shared.canvas.width, Shared.canvas.height >> 1);
+		Shared.ctx.fillStyle = floor;
+		Shared.ctx.fillRect(0, Shared.canvas.height>>1, Shared.canvas.width, Shared.canvas.height);
 
-	document.body.addEventListener('blur', function () {
-		Wee.pause();
+		draw3d(rays, player, 1);
+		if(!Shared.isMobile) {
+			draw2d(rays, player, .1);
+		}
+		Shared.ctx.restore();
 	});
-	document.body.addEventListener('focus', function () {
-		Wee.start();
-	});
-	
+   
 	Shared.loadAssets([textureSrc], function () {
 		texBufCtx.drawImage(Shared.assets[textureSrc], 0, 0);
 		Wee.start();
