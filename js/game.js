@@ -68,7 +68,7 @@ define([
 	});
 
 
-	if(Shared.isMobile || true) {
+	if(Shared.isMobile) {
 		Shared.controlsEle.appendChild(Touch.button({
 			symbol: '&#9668;',
 			size: mobileCtrlSize,
