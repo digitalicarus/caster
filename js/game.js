@@ -38,7 +38,7 @@ define([
 	,   player             = null
 	,   sky                = Shared.ctx.createLinearGradient(0, 0, 0, Shared.canvas.height >> 1)
 	,   floor              = Shared.ctx.createLinearGradient(0, Shared.canvas.height >> 1, 0, Shared.canvas.height)
-	,   mobileCtrlSize     = Shared.canvas.width >> 2
+	,   mobileCtrlSize     = (Shared.canvas.width / 6) >> 0
 	;
 
 	sky.addColorStop(0, "rgb(90, 90, 200)");
@@ -66,6 +66,13 @@ define([
 	Keys.on('d', function () {
 		player.right();
 	});
+	Keys.on('q', function () {
+		player.strafeLeft();
+	});
+	Keys.on('e', function () {
+		player.strafeRight();
+	});
+
 
 
 	if(Shared.isMobile) {
@@ -73,34 +80,50 @@ define([
 			symbol: '&#9668;',
 			size: mobileCtrlSize,
 			left: 5,
-			bottom: 5
+			bottom: mobileCtrlSize/1.2
 		}, function () {
-			player.left();
+			player.strafeLeft();
 		}));
 		Shared.controlsEle.appendChild(Touch.button({
 			symbol: '&#9658;',
 			size: mobileCtrlSize,
-			left: mobileCtrlSize + 5,
-			bottom: 5
+			left: mobileCtrlSize/.7,
+			bottom: mobileCtrlSize/1.2
 		}, function () {
-			player.right();
-		}));
+			player.strafeRight();
+		})); 
 		Shared.controlsEle.appendChild(Touch.button({
 			symbol: '&#9650;',
 			size: mobileCtrlSize,
-			right: 5,
-			bottom: mobileCtrlSize + 5
+			left: mobileCtrlSize/1.3,
+			bottom: mobileCtrlSize + mobileCtrlSize/2.5
 		}, function () {
 			player.forward();
 		}));
 		Shared.controlsEle.appendChild(Touch.button({
 			symbol: '&#9660;',
 			size: mobileCtrlSize,
-			right: 5,
+			left: mobileCtrlSize/1.3,
 			bottom: 5
 		}, function () {
 			player.back();
 		}));
+		Shared.controlsEle.appendChild(Touch.button({
+			symbol: '&#9668;',
+			size: mobileCtrlSize,
+			right: mobileCtrlSize/.7,
+			bottom: mobileCtrlSize>>1
+		}, function () {
+			player.left();
+		}));
+		Shared.controlsEle.appendChild(Touch.button({
+			symbol: '&#9658;',
+			size: mobileCtrlSize,
+			right: mobileCtrlSize>>2,
+			bottom: mobileCtrlSize>>1
+		}, function () {
+			player.right();
+		})); 	
 	}
  
 

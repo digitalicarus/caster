@@ -129,9 +129,10 @@ define(['config',
 		degToRad: degToRad,
 		radToDeg: radToDeg,
 		loadAssets: loadAssets,
+		halfPI: Math.PI / 2,
 		twoPI: 2*Math.PI,
-		assets: globalAssets,
 		threePI: 3*Math.PI,
+		assets: globalAssets,
 		map: map
 	};
 

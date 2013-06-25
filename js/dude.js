@@ -14,6 +14,16 @@ define(['shared'], function(Shared) {
 			var next = (this.angle - this.rotSpeed);
 			this.angle = (next < 0) ? Shared.twoPI - next : next;
 		},
+		strafeLeft: function () { 
+			var strangle = this.angle + Shared.halfPI;
+			this.x += this.moveSpeed * Math.cos(strangle);
+			this.y += this.moveSpeed * -Math.sin(strangle); 
+		},
+		strafeRight: function () {
+			var strangle = this.angle - Shared.halfPI;
+			this.x += this.moveSpeed * Math.cos(strangle);
+			this.y += this.moveSpeed * -Math.sin(strangle); 		
+		},
 		forward: function() {
 			this.x += this.moveSpeed * Math.cos(this.angle);
 			this.y += this.moveSpeed * -Math.sin(this.angle);
