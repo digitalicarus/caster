@@ -280,6 +280,7 @@ define([
 		Shared.ctx.scale(scale, scale);
 		Shared.ctx.strokeStyle = "white";
 		Shared.ctx.fillStyle   = "#b0b0ff";
+		Shared.ctx.lineWidth = 1/scale;
 
 
 		for ( i = 0; i < Level.current.map.length; i++ ) {
@@ -360,7 +361,9 @@ define([
 	Wee.setRender(function () {
 		Keys.run();
 		Touch.run();
-		var rays = cast();
+		var rays = cast()
+		,   i    = 0
+		;
 
 		Shared.ctx.save();
 		Shared.ctx.clearRect(0,0, Shared.canvas.width, Shared.canvas.height); 
@@ -373,10 +376,24 @@ define([
 		if(!Shared.isMobile) {
 			draw2d(rays, player, .1);
 		}
+
+		// scanline effect
+		if (!Shared.isMobile) {
+			Shared.ctx.strokeStyle = "#222";
+			Shared.ctx.lineWidth = .4;
+			for (i=.5; i < Shared.canvas.height; i+=2) {
+				Shared.ctx.beginPath();
+				Shared.ctx.moveTo(0, i);
+				Shared.ctx.lineTo(Shared.canvas.width, i);
+				Shared.ctx.stroke();
+				Shared.ctx.closePath();
+			}
+		}
 		Shared.ctx.restore();
 	});
    
 	Shared.loadAssets([textureSrc], function () {
+
 		texBufCtx.drawImage(Shared.assets[textureSrc], 0, 0);
 		Wee.start();
 	});
