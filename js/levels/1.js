@@ -29,8 +29,9 @@ define([], function() {
 	return {
 		map: map,
 		player: {
-			x: 2,
-			y: 5
+			x: 14,
+			y: 9,
+			angle: 1
 		}
 	};
 });

@@ -11,14 +11,16 @@ define(['config',
 	,   canvas        = createEle('canvas')
 	,   ctx           = canvas.getContext('2d')
 	,   isMobile      = checkMobile()
-	,   canvasWidth   = (!isMobile) ? config.width : config.width >> 1
-	,   canvasHeight  = (!isMobile) ? config.height : config.height >> 1
+	,   canvasWidth   = (!isMobile) ? config.width : (config.width / 1.5) >>0
+	,   canvasHeight  = (!isMobile) ? config.height : (config.height / 1.8) >>0
 	,   assetType = {
 			img: ['png','gif','jpeg',],
 			audio: ['ogg', 'mp3', 'wav']
 		}
-	,   globalAssets = {}
+	,   vendors       = ['', 'webkit', 'moz', 'ms', 'o'] 
+	,   globalAssets  = {}
 	,   map           = null // defined below
+	,   i             = 0
 	;
 
 	canvas.width = canvasWidth;
@@ -35,6 +37,19 @@ define(['config',
 	gameContainer.appendChild(canvas);
 	gameContainer.appendChild(controlsEle);
 	body.appendChild(gameContainer);
+
+	function setVendorProps (prop, value) {
+		var caps = prop.charAt(0).toUpperCase() + prop.slice(1)
+		,   tmp  = ''
+		;
+
+		for ( i=0; i < vendors.length; i++ ) {
+			tmp = i + ((i==='') ? prop : caps);
+			if (ctx.hasOwnProperty(tmp)) {
+				ctx[tmp] = value;
+			}
+		}
+	};
 
 	function resize (evt) {
 		var height = window.innerHeight || body.clientHeight
@@ -123,6 +138,7 @@ define(['config',
 		canvas: canvas,
 		ctx:    ctx,
 		isMobile: isMobile,
+		setVendorProps: setVendorProps,
 		config: config,
 		Class:  Class,
 		aug: aug,

@@ -47,6 +47,8 @@ define([
 	floor.addColorStop(1, "rgb(0, 0, 0)");
 
 
+	Shared.setVendorProps('imageSmoothingEnabled', false);
+
 	player = new Player({
 		x: Level.current.player.x<<unitShift + (unit>>1),
 		y: Level.current.player.y<<unitShift + (unit>>1),
@@ -341,6 +343,7 @@ define([
 			*/
 
 			// Texture this mutha
+			/*
 			Shared.ctx.drawImage(
 					Shared.assets[textureSrc],
                     ((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
@@ -353,16 +356,55 @@ define([
                     canvasMiddle - stripHeight / 2,
                     stripWidth,
                     stripHeight
-			);
+			); 			
+			*/
+			Shared.ctx.drawImage(
+					Shared.assets[textureSrc],
+                    ((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
+                    //(((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit))>>0) - (stripWidth>>1),
+                    0,
+                    //stripWidth, //try sampling the whole strip width - then we'll try scaling 1px to width
+                    1,
+                    unit,
+                    i<<stripShift,
+                    canvasMiddle - stripHeight / 2,
+                    stripWidth,
+                    stripHeight
+			); 
 		}
 		Shared.ctx.restore();
 	}
+
+	var renderScanlines = (function (mobile) {
+		if (mobile) {
+			return function () {};
+		} else {
+			return function () {
+				var i    = 0
+				,   incr = 2
+				;
+
+				Shared.ctx.save();
+				Shared.ctx.strokeStyle = "#222";
+				Shared.ctx.lineWidth =  .4;
+				for (i=1.1; i < Shared.canvas.height; i+=incr) {
+					Shared.ctx.beginPath();
+					Shared.ctx.moveTo(0, i);
+					Shared.ctx.lineTo(Shared.canvas.width, i);
+					Shared.ctx.stroke();
+					Shared.ctx.closePath();
+				} 
+				Shared.ctx.restore();
+			}
+		}
+	})(Shared.isMobile);
 
 	Wee.setRender(function () {
 		Keys.run();
 		Touch.run();
 		var rays = cast()
 		,   i    = 0
+		,   scanIncr = 2
 		;
 
 		Shared.ctx.save();
@@ -378,17 +420,7 @@ define([
 		}
 
 		// scanline effect
-		if (!Shared.isMobile) {
-			Shared.ctx.strokeStyle = "#222";
-			Shared.ctx.lineWidth = .4;
-			for (i=.5; i < Shared.canvas.height; i+=2) {
-				Shared.ctx.beginPath();
-				Shared.ctx.moveTo(0, i);
-				Shared.ctx.lineTo(Shared.canvas.width, i);
-				Shared.ctx.stroke();
-				Shared.ctx.closePath();
-			}
-		}
+		renderScanlines();
 		Shared.ctx.restore();
 	});
    
