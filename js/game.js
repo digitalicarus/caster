@@ -6,6 +6,7 @@
 // TODO: split out caster
 // TODO: split out renderer
 // TODO: split out var hell into configs
+// TODO: convert rendering conditionals to factory replacer functions
 // TODO: mobile config
 define([
 		'shared',
@@ -17,6 +18,8 @@ define([
 ], function (Shared, Wee, Keys, Touch, Level, Player) {
 	var texBuf             = document.createElement('canvas')
 	,   texBufCtx          = texBuf.getContext('2d')
+	,   buf                = document.createElement('canvas')
+	,   bufCtx             = buf.getContext('2d')
 	,   textureSrc         = 'img/terrain.png'
 	,   twoPI              = Math.PI>>1
 	,   unitPow            = 5
@@ -39,6 +42,8 @@ define([
 	,   sky                = Shared.ctx.createLinearGradient(0, 0, 0, Shared.canvas.height >> 1)
 	,   floor              = Shared.ctx.createLinearGradient(0, Shared.canvas.height >> 1, 0, Shared.canvas.height)
 	,   mobileCtrlSize     = (Shared.canvas.width / 6) >> 0
+	,   lighting           = false
+	,   texture            = true
 	;
 
 	sky.addColorStop(0, "rgb(90, 90, 200)");
@@ -55,6 +60,9 @@ define([
 		angle: Level.current.player.angle || 0.14
 	});
 
+	document.body.appendChild(buf);
+	document.body.appendChild(texBuf);
+	buf.height = Shared.canvas.height <<1 ;
 
 	Keys.on('w', function () {
 		player.forward();
@@ -75,6 +83,12 @@ define([
 		player.strafeRight();
 	});
 
+	Keys.on('l', function () {
+		lighting = (lighting) ? false : true;
+	});
+	Keys.on('t', function () {
+		texture = (texture) ? false : true;
+	});
 
 
 	if(Shared.isMobile) {
@@ -138,6 +152,38 @@ define([
 		} catch (e) {
 			return undefined;
 		}
+	}
+
+
+	function blitScale (tex, tX, tY, tW, tH, dst, dX, dY, dW, dH, filter) {
+		// when doing this for reals this would be part of a module and 
+		// would encapsulate the buffer canvas element
+		var scaleX = dW/tW
+		,   scaleY = dH/tH
+		,   blitW  = (scaleX < 1) ? dW : tW
+		,   blitH  = (scaleY < 1) ? dH : tH
+		,   ctxDst = dst.getContext('2d')
+		,   ctxTex = tex.getContext('2d')
+		,   ctxBuf = bufCtx
+		,   i      = 0
+		,   j      = 0
+		,   data   = null
+		,   ptr    = 0
+		;
+		
+		// if one scale is < 1 then we have to blit that scale to buf canvas
+		// to avoid cutting off the texture
+		ctxBuf.drawImage(tex,tX,tY,tW,tH,0,0,blitW,blitH)
+
+		filter 
+		&& typeof filter === 'function' 
+		&& ctxBuf.putImageData(
+				filter(
+					ctxBuf.getImageData(0,0,blitW,blitH),blitW,blitH
+				),0,0
+		);
+		
+		ctxDst.drawImage(buf,0,0,dW,dH,dX,dY,dW*scaleX,dH*scaleY);
 	}
 
 	// http://www.permadi.com/tutorial/raycast/rayc7.html
@@ -321,6 +367,7 @@ define([
 	function draw3d(rays, player, scale) {
 		var i            = 0
 		,   stripHeight  = 0
+		,  	lightFactor  = unit << 2
 		,   texStripLoc  = 0
 		,   ray          = null
 		,   canvasMiddle = Shared.canvas.height / 2
@@ -335,42 +382,61 @@ define([
 
 			/*
 			 * Textureless
-			Shared.ctx.beginPath();
-			Shared.ctx.moveTo(i, canvasMiddle - stripHeight / 2);
-			Shared.ctx.lineTo(i, canvasMiddle + stripHeight / 2);
-			Shared.ctx.stroke();
-			Shared.ctx.closePath();
+
 			*/
 
 			// Texture this mutha
 			/*
-			Shared.ctx.drawImage(
-					Shared.assets[textureSrc],
-                    ((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
-                    //(((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit))>>0) - (stripWidth>>1),
-                    0,
-                    //stripWidth, //try sampling the whole strip width - then we'll try scaling 1px to width
-                    1,
-                    unit,
-                    i<<stripShift,
-                    canvasMiddle - stripHeight / 2,
-                    stripWidth,
-                    stripHeight
-			); 			
+
 			*/
-			Shared.ctx.drawImage(
-					Shared.assets[textureSrc],
-                    ((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
-                    //(((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit))>>0) - (stripWidth>>1),
-                    0,
-                    //stripWidth, //try sampling the whole strip width - then we'll try scaling 1px to width
-                    1,
-                    unit,
-                    i<<stripShift,
-                    canvasMiddle - stripHeight / 2,
-                    stripWidth,
-                    stripHeight
-			); 
+			if(lighting) {
+				blitScale(
+					texBuf,
+					((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
+					0,
+					1,
+					unit,
+					Shared.canvas,
+					i<<stripShift,
+					canvasMiddle - stripHeight / 2,
+					stripWidth,
+					stripHeight,
+					function (data) {
+						var i = 0
+						,   light = (lightFactor) / (ray.dist << 1)
+						;
+							
+						while(i<data.data.length) {
+							while(i%4!==3) {
+								data.data[i++] *= light;
+							}
+							i++;
+						}
+						return data;
+					}
+				);
+			} else if (texture) {
+				Shared.ctx.drawImage(
+						Shared.assets[textureSrc],
+						((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
+						//(((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit))>>0) - (stripWidth>>1),
+						0,
+						//stripWidth, //try sampling the whole strip width - then we'll try scaling 1px to width
+						1,
+						unit,
+						i<<stripShift,
+						canvasMiddle - stripHeight / 2,
+						stripWidth,
+						stripHeight
+				);
+			} else {
+				Shared.ctx.lineWidth = stripWidth;
+				Shared.ctx.beginPath();
+				Shared.ctx.moveTo(i<<stripShift, canvasMiddle - stripHeight / 2);
+				Shared.ctx.lineTo(i<<stripShift, canvasMiddle + stripHeight / 2);
+				Shared.ctx.stroke();
+				Shared.ctx.closePath(); 			
+			}
 		}
 		Shared.ctx.restore();
 	}
@@ -420,12 +486,11 @@ define([
 		}
 
 		// scanline effect
-		renderScanlines();
+		//renderScanlines();
 		Shared.ctx.restore();
 	});
    
 	Shared.loadAssets([textureSrc], function () {
-
 		texBufCtx.drawImage(Shared.assets[textureSrc], 0, 0);
 		Wee.start();
 	});
