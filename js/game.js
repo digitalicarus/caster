@@ -42,7 +42,9 @@ define([
 	,   sky                = Shared.ctx.createLinearGradient(0, 0, 0, Shared.canvas.height >> 1)
 	,   floor              = Shared.ctx.createLinearGradient(0, Shared.canvas.height >> 1, 0, Shared.canvas.height)
 	,   mobileCtrlSize     = (Shared.canvas.width / 6) >> 0
-	,   lighting           = false
+	,   lighting           = true
+    ,  	lightFactor        = unit << 7
+    ,   canvasMiddle       = Shared.canvas.height / 2
 	,   texture            = true
 	;
 
@@ -162,6 +164,8 @@ define([
 		,   scaleY = dH/tH
 		,   blitW  = (scaleX < 1) ? dW : tW
 		,   blitH  = (scaleY < 1) ? dH : tH
+		,   destW  = (scaleX < 1) ? dW : dW * scaleX 
+		,   destH  = (scaleY < 1) ? dH : dH * scaleY 
 		,   ctxDst = dst.getContext('2d')
 		,   ctxTex = tex.getContext('2d')
 		,   ctxBuf = bufCtx
@@ -173,7 +177,7 @@ define([
 		
 		// if one scale is < 1 then we have to blit that scale to buf canvas
 		// to avoid cutting off the texture
-		ctxBuf.drawImage(tex,tX,tY,tW,tH,0,0,blitW,blitH)
+		ctxBuf.drawImage(tex,tX,tY,tW,tH,0,0,blitW,blitH);
 
 		filter 
 		&& typeof filter === 'function' 
@@ -183,7 +187,7 @@ define([
 				),0,0
 		);
 		
-		ctxDst.drawImage(buf,0,0,dW,dH,dX,dY,dW*scaleX,dH*scaleY);
+		ctxDst.drawImage(buf,0,0,dW,dH,dX,dY,dW*scaleX,dH*((scaleY < 1) ? 1 : scaleY));
 	}
 
 	// http://www.permadi.com/tutorial/raycast/rayc7.html
@@ -367,10 +371,8 @@ define([
 	function draw3d(rays, player, scale) {
 		var i            = 0
 		,   stripHeight  = 0
-		,  	lightFactor  = unit << 2
 		,   texStripLoc  = 0
 		,   ray          = null
-		,   canvasMiddle = Shared.canvas.height / 2
 		;
 
 		Shared.ctx.save();
@@ -403,7 +405,7 @@ define([
 					stripHeight,
 					function (data) {
 						var i = 0
-						,   light = (lightFactor) / (ray.dist << 1)
+						,   light = (lightFactor) / (ray.dist * (ray.dist>>1))
 						;
 							
 						while(i<data.data.length) {
