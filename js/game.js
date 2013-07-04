@@ -62,9 +62,9 @@ define([
 		angle: Level.current.player.angle || 0.14
 	});
 
-	document.body.appendChild(buf);
-	document.body.appendChild(texBuf);
-	buf.height = Shared.canvas.height <<1 ;
+	//document.body.appendChild(buf);
+	//document.body.appendChild(texBuf);
+	buf.height = Shared.canvas.height <<2 ;
 
 	Keys.on('w', function () {
 		player.forward();
@@ -85,12 +85,16 @@ define([
 		player.strafeRight();
 	});
 
-	Keys.on('l', function () {
-		lighting = (lighting) ? false : true;
-	});
-	Keys.on('t', function () {
-		texture = (texture) ? false : true;
-	});
+    document.body.addEventListener('keyup',   function(e) {
+		var code = e.which || e.keyCode || e.key;
+		//console.log("keyup: "+code);
+		if (code === Keys.codes.t) {
+            texture = (texture) ? false : true;
+        }
+        if (code === Keys.codes.l) {
+            lighting = (lighting) ? false : true;
+        }
+	}, false);
 
 
 	if(Shared.isMobile) {
@@ -187,7 +191,7 @@ define([
 				),0,0
 		);
 		
-		ctxDst.drawImage(buf,0,0,dW,dH,dX,dY,dW*scaleX,dH*((scaleY < 1) ? 1 : scaleY));
+		ctxDst.drawImage(buf,0,0,blitW,dH,dX,dY,dW*scaleX,dH*((scaleY < 1) ? 1 : scaleY));
 	}
 
 	// http://www.permadi.com/tutorial/raycast/rayc7.html
@@ -493,6 +497,8 @@ define([
 	});
    
 	Shared.loadAssets([textureSrc], function () {
+        texBuf.height = 1024;
+        texBuf.width = 1024;
 		texBufCtx.drawImage(Shared.assets[textureSrc], 0, 0);
 		Wee.start();
 	});

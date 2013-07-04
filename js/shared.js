@@ -61,7 +61,8 @@ define(['config',
 		;
 
 		for(i in styles) {
-			gameContainer.style[styles[i]] = 'scale('+scale+')';
+                gameContainer.style[styles[i]] = 'scale('+scale+')';
+                gameContainer.style[styles[i]] = 'scale3d('+scale+', '+scale+', 1)';
 		}
 
 		gameContainer.style.top  = (canvas.height * (scale-1)>>1) + 'px'; 

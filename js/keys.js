@@ -36,6 +36,8 @@ define([], function(){
 		delete latch[code];
 	}, false);
 	
+	ret.codes = codes;
+
 	ret.on = function(key, func) {
 		on[key] = func;
 	};
