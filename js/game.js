@@ -8,6 +8,7 @@
 // TODO: split out var hell into configs
 // TODO: convert rendering conditionals to factory replacer functions
 // TODO: mobile config
+/*global define*/
 define([
 		'shared',
 		'wee',
@@ -16,12 +17,13 @@ define([
 		'level',
 		'player'
 ], function (Shared, Wee, Keys, Touch, Level, Player) {
+	"use strict";
+
 	var texBuf             = document.createElement('canvas')
 	,   texBufCtx          = texBuf.getContext('2d')
 	,   buf                = document.createElement('canvas')
 	,   bufCtx             = buf.getContext('2d')
 	,   textureSrc         = 'img/terrain.png'
-	,   twoPI              = Math.PI>>1
 	,   unitPow            = 5
 	,   unitShift          = unitPow + 1
 	,   unit               = 2<<unitPow
@@ -33,7 +35,7 @@ define([
 	,   halfFovRad         = fovRad / 2
 	,   frustumWidth       = Shared.canvas.width
 	,   frustumHeight      = Shared.canvas.height
-	,   rayAngle           = fov * stripWidth / frustumWidth 
+	,   rayAngle           = fov * stripWidth / frustumWidth
 	,   rayAngleRad        = (rayAngle * Math.PI) / 180
 	,   frustumCenter      = { x: frustumWidth>>1, y: frustumHeight>>1 }
 	,   frustumDistance    = (frustumWidth>>1) / Math.tan(fov/2)
@@ -42,10 +44,10 @@ define([
 	,   sky                = Shared.ctx.createLinearGradient(0, 0, 0, Shared.canvas.height >> 1)
 	,   floor              = Shared.ctx.createLinearGradient(0, Shared.canvas.height >> 1, 0, Shared.canvas.height)
 	,   mobileCtrlSize     = (Shared.canvas.width / 6) >> 0
-	,   lighting           = true
-    ,  	lightFactor        = unit << 7
-    ,   canvasMiddle       = Shared.canvas.height / 2
+	,   lighting           = false
 	,   texture            = true
+    ,   lightFactor        = unit << 7
+    ,   canvasMiddle       = Shared.canvas.height / 2
 	;
 
 	sky.addColorStop(0, "rgb(90, 90, 200)");
@@ -109,11 +111,11 @@ define([
 		Shared.controlsEle.appendChild(Touch.button({
 			symbol: '&#9658;',
 			size: mobileCtrlSize,
-			left: mobileCtrlSize/.7,
+			left: mobileCtrlSize/0.7,
 			bottom: mobileCtrlSize/1.2
 		}, function () {
 			player.strafeRight();
-		})); 
+		}));
 		Shared.controlsEle.appendChild(Touch.button({
 			symbol: '&#9650;',
 			size: mobileCtrlSize,
@@ -133,7 +135,7 @@ define([
 		Shared.controlsEle.appendChild(Touch.button({
 			symbol: '&#9668;',
 			size: mobileCtrlSize,
-			right: mobileCtrlSize/.7,
+			right: mobileCtrlSize/0.7,
 			bottom: mobileCtrlSize>>1
 		}, function () {
 			player.left();
@@ -145,7 +147,7 @@ define([
 			bottom: mobileCtrlSize>>1
 		}, function () {
 			player.right();
-		})); 	
+		}));
 	}
  
 
@@ -153,6 +155,7 @@ define([
 	 * returns tile data at location
 	 */
 	function tileAt(x, y) {
+
 		try {
 			return Level.current.map[y >> unitShift][x >> unitShift];
 		} catch (e) {
@@ -162,14 +165,15 @@ define([
 
 
 	function blitScale (tex, tX, tY, tW, tH, dst, dX, dY, dW, dH, filter) {
+
 		// when doing this for reals this would be part of a module and 
 		// would encapsulate the buffer canvas element
 		var scaleX = dW/tW
 		,   scaleY = dH/tH
 		,   blitW  = (scaleX < 1) ? dW : tW
 		,   blitH  = (scaleY < 1) ? dH : tH
-		,   destW  = (scaleX < 1) ? dW : dW * scaleX 
-		,   destH  = (scaleY < 1) ? dH : dH * scaleY 
+		,   destW  = (scaleX < 1) ? dW : dW * scaleX
+		,   destH  = (scaleY < 1) ? dH : dH * scaleY
 		,   ctxDst = dst.getContext('2d')
 		,   ctxTex = tex.getContext('2d')
 		,   ctxBuf = bufCtx
@@ -183,10 +187,10 @@ define([
 		// to avoid cutting off the texture
 		ctxBuf.drawImage(tex,tX,tY,tW,tH,0,0,blitW,blitH);
 
-		filter 
-		&& typeof filter === 'function' 
-		&& ctxBuf.putImageData(
-				filter(
+		filter
+		&& typeof filter === 'function'
+		&& ctxBuf.putImageData (
+			filter(
 					ctxBuf.getImageData(0,0,blitW,blitH),blitW,blitH
 				),0,0
 		);
@@ -196,6 +200,7 @@ define([
 
 	// http://www.permadi.com/tutorial/raycast/rayc7.html
 	function cast() {
+
 		var i           = 0
 		,   currRay     = player.angle + halfFovRad
 		,   fishCorrect = null
@@ -224,7 +229,7 @@ define([
 		;
         
         for (i = 0; i < frustumWidth; i += stripWidth) {
-        	rayObj = {};
+			rayObj = {};
             tanRay = Math.tan(currRay);
             tanRayInv = 1/tanRay; // reciprocal mult is faster than divide in some browsers
             sinRay = Math.sin(currRay);
@@ -238,29 +243,29 @@ define([
 			horizStartY = (horizYIncr < 0) ? normalizedY - 1 : normalizedY + unit; // pull point into grid block
 			vertStartX  = (vertXIncr < 0) ? normalizedX - 1 : normalizedX + unit;   // ""
 
-        	// get first horizontal intercept
-        	castY = horizStartY;
-        	castX = player.x + (player.y - castY) * tanRayInv; // chance to divide by 0 FIXME
+			// get first horizontal intercept
+			castY = horizStartY;
+			castX = player.x + (player.y - castY) * tanRayInv; // chance to divide by 0 FIXME
 
-        	if (tileAt(castX, castY) > 0) { 
-        		horizHit = { x: castX, y: castY };
+			if (tileAt(castX, castY) > 0) {
+				horizHit = { x: castX, y: castY };
 			} else {
 				horizXIncr = (horizYIncr < 0) ? unit * tanRayInv : -unit * tanRayInv;
 
 				// cast for horizontal intercepts or edge of level
-				while (castY > 0 && castX > 0 
-						&& castY >> unitShift < Level.current.map.length 
-						&& castX >> unitShift < Level.current.map[0].length 
+				while (castY > 0 && castX > 0
+						&& castY >> unitShift < Level.current.map.length
+						&& castX >> unitShift < Level.current.map[0].length
 						&& !horizHit) {
 					castY += horizYIncr;
 					castX += horizXIncr;
 					if (tileAt(castX, castY) > 0) {
-						horizHit = { x: castX, y: castY }
+						horizHit = { x: castX, y: castY };
 						break;
 					}
 				}
 				if(!horizHit) {
-					horizHit = { x: castX, y: castY }
+					horizHit = { x: castX, y: castY };
 				}
 			}
 
@@ -279,8 +284,8 @@ define([
 
 				// check vertical intercepts
 				while ( castX > 0 && castY > 0
-						&& castY >> unitShift < Level.current.map.length 
-						&& castX >> unitShift < Level.current.map[0].length 
+						&& castY >> unitShift < Level.current.map.length
+						&& castX >> unitShift < Level.current.map[0].length
 						&& !vertHit) {
 					castX += vertXIncr;
 					castY += vertYIncr;
@@ -304,7 +309,7 @@ define([
 			if(rayObj) {
 				rayObj.dist = (vertDist < horizDist) ? vertDist * fishCorrect : horizDist * fishCorrect;
 				rayObj.angle = currRay;
-				rayObj.tile = tileAt(rayObj.x, rayObj.y)
+				rayObj.tile = tileAt(rayObj.x, rayObj.y);
 				rayObj.dir = (vertDist < horizDist) ? "vert" : "horiz";
 				rayObj.vert = (vertHit) ? vertHit : null;
 				rayObj.horiz = (horizHit) ? horizHit : null;
@@ -319,8 +324,7 @@ define([
 			}
 
 			rays.push(rayObj);
-
-        	currRay -= rayAngleRad;
+			currRay -= rayAngleRad;
 		}
 
 		return rays;
@@ -328,6 +332,7 @@ define([
 
 	// TODO: make minimap that draws only a configurable portion of the map around the player as center point
 	function draw2d (rays, player, scale) {
+
 		var i
 		,   j
 		,   playerDotScale = unit >> 3
@@ -358,11 +363,11 @@ define([
 		Shared.ctx.closePath();
 
 		Shared.ctx.strokeStyle = "yellow";
-		Shared.ctx.lineWidth = .5;
+		Shared.ctx.lineWidth = 0.5;
 		for ( i = 0; i < rays.length; i++ ) {
 			if(!rays[i] || typeof rays[i] !== 'object') { continue; }
 			Shared.ctx.beginPath();
-			Shared.ctx.moveTo(player.x + playerDotScale * .5, player.y + playerDotScale * .5);
+			Shared.ctx.moveTo(player.x + playerDotScale * 0.5, player.y + playerDotScale * 0.5);
 			Shared.ctx.lineTo(rays[i].x, rays[i].y);
 			// DEBUG: vision cone
 			//Shared.ctx.lineTo(player.x + rays[i].dist * Math.cos(rays[i].angle), player.y + rays[i].dist * -Math.sin(rays[i].angle));
@@ -373,29 +378,14 @@ define([
 	}
 
 	function draw3d(rays, player, scale) {
+
 		var i            = 0
 		,   stripHeight  = 0
 		,   texStripLoc  = 0
 		,   ray          = null
 		;
 
-		Shared.ctx.save();
-		Shared.ctx.strokeStyle = "blue";
-		Shared.ctx.lineWidth = stripWidth;
-		for ( i = 0; i < rays.length; i++ ) {
-			ray = rays[i];
-			stripHeight = defaultStripFactor / ray.dist;
-
-			/*
-			 * Textureless
-
-			*/
-
-			// Texture this mutha
-			/*
-
-			*/
-			if(lighting) {
+		function drawWithLighting(ray, stripHeight) {
 				blitScale(
 					texBuf,
 					((ray.tile << unitShift) + ((ray.dir === "vert") ? ray.y % unit : ray.x % unit)),
@@ -421,6 +411,26 @@ define([
 						return data;
 					}
 				);
+		}
+
+		Shared.ctx.save();
+		Shared.ctx.strokeStyle = "blue";
+		Shared.ctx.lineWidth = stripWidth;
+		for ( i = 0; i < rays.length; i++ ) {
+			ray = rays[i];
+			stripHeight = defaultStripFactor / ray.dist;
+
+			/*
+			 * Textureless
+
+			*/
+
+			// Texture this mutha
+			/*
+
+			*/
+			if(lighting) {
+				drawWithLighting(ray, stripHeight);
 			} else if (texture) {
 				Shared.ctx.drawImage(
 						Shared.assets[textureSrc],
@@ -441,13 +451,14 @@ define([
 				Shared.ctx.moveTo(i<<stripShift, canvasMiddle - stripHeight / 2);
 				Shared.ctx.lineTo(i<<stripShift, canvasMiddle + stripHeight / 2);
 				Shared.ctx.stroke();
-				Shared.ctx.closePath(); 			
+				Shared.ctx.closePath();
 			}
 		}
 		Shared.ctx.restore();
 	}
 
 	var renderScanlines = (function (mobile) {
+
 		if (mobile) {
 			return function () {};
 		} else {
@@ -458,16 +469,16 @@ define([
 
 				Shared.ctx.save();
 				Shared.ctx.strokeStyle = "#222";
-				Shared.ctx.lineWidth =  .4;
+				Shared.ctx.lineWidth =  0.4;
 				for (i=1.1; i < Shared.canvas.height; i+=incr) {
 					Shared.ctx.beginPath();
 					Shared.ctx.moveTo(0, i);
 					Shared.ctx.lineTo(Shared.canvas.width, i);
 					Shared.ctx.stroke();
 					Shared.ctx.closePath();
-				} 
+				}
 				Shared.ctx.restore();
-			}
+			};
 		}
 	})(Shared.isMobile);
 
@@ -480,7 +491,7 @@ define([
 		;
 
 		Shared.ctx.save();
-		Shared.ctx.clearRect(0,0, Shared.canvas.width, Shared.canvas.height); 
+		Shared.ctx.clearRect(0,0, Shared.canvas.width, Shared.canvas.height);
 		Shared.ctx.fillStyle = sky;
 		Shared.ctx.fillRect(0, 0, Shared.canvas.width, Shared.canvas.height >> 1);
 		Shared.ctx.fillStyle = floor;
@@ -488,7 +499,7 @@ define([
 
 		draw3d(rays, player, 1);
 		if(!Shared.isMobile) {
-			draw2d(rays, player, .1);
+			draw2d(rays, player, 0.1);
 		}
 
 		// scanline effect

@@ -1,0 +1,30 @@
+{
+  "name": "caster",
+  "version": "0.0.0",
+  "description": "A JS RayCaster ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "cssRoot": "css",
+  "jsRoot": "js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/digitalicarus/caster.git"
+  },
+  "keywords": [
+    "javascript",
+    "raycaster"
+  ],
+  "devDependencies": {
+    "cjson": "0.2.1",
+    "grunt-contrib-uglify": "0.2.2",
+    "grunt-contrib-jshint": "0.6.0",
+    "grunt-contrib-less": "0.6.2",
+    "grunt-contrib-watch": "0.4.4"
+  },
+  "author": "digitalicarus",
+  "license": "WTFPL",
+  "readmeFilename": "README.md",
+  "gitHead": "18aa2acacf247cfe52a39e9d5eaecb0055098a7d"
+}

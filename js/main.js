@@ -1,3 +1,4 @@
+/*global require,requirejs*/
 requirejs.config({
 	paths: {
 		"class": "vendor/class",

@@ -1,4 +1,7 @@
+/*global define,console*/
 define([], function(){
+	"use strict";
+
 	var FPS           = 60
 	,   rate          = 60
 	,   frameCounter  = 0
@@ -6,7 +9,6 @@ define([], function(){
 	,   accrued       = 0.0
 	,   last          = Date.now()/1000
 	,   cycleCounter  = 0
-	,   frameCounter  = 0
 	,   droppedFrames = 0
 	,   interval      = null
 	,   paused        = true // internal state
@@ -15,7 +17,6 @@ define([], function(){
 	,   intervalRate  = Math.floor(1000/FPS) - 1
 	,   ciCallback    = function(){}
 	,   upCallback    = function(){}
-	,   rdCallback    = function(){}
 	,   rdCallback    = function(){}
 	,   pauseCallback = function(){}
 	;
@@ -30,15 +31,15 @@ define([], function(){
 	// will fire very rapidly. Don't waste much time in here at all!
 	// You can use this for collision detection etc. 
 	// Just check if you have already updated this render cycle and bail ASAP.
-	function Update() {
+	function update() {
 		frameCounter++;
 		droppedFrames++;
 		upCallback();
 	}
-		   
+
 	// This is the one you really want. Draw the result of your state in here.
-	function Render() {
-		rate = (droppedFrames > 0) ? 
+	function render() {
+		rate = (droppedFrames > 0) ?
 			((rate+(FPS/(droppedFrames*2)))/2):
 			((rate + FPS)/2);
 			
@@ -47,18 +48,18 @@ define([], function(){
 		// just render every N frames to avoid a jarring display
 		droppedFrames = -1;
 		rdCallback();
-	} 
+	}
 
-	function GameLoop() {
+	function gameLoop() {
 		var now = Date.now()/1000;
 		accrued += (now-last);
 		
 		//CheckInput(); input check would normally go here, but this is JavaScript
 		while(accrued > dt){
-			!paused && Update();
+			!paused && update();
 			accrued -= dt;
 		}
-		!paused && Render();
+		!paused && render();
 		last = now;
 	}
 	
@@ -77,11 +78,11 @@ define([], function(){
 				(function animloop(){
 					if(!paused) {
 						interval = requestAnimFrame(animloop);
-						GameLoop();                          
+						gameLoop();
 					}
 				})();
 			} else {
-				interval = setInterval(GameLoop, intervalRate);
+				interval = setInterval(gameLoop, intervalRate);
 			}
 			console.log("start");
 		}
@@ -94,7 +95,7 @@ define([], function(){
 			interval = undefined;
 			console.log("pause");
 			paused = true;
-		} 
+		}
 	}
 	
 	// http://stackoverflow.com/questions/1060008/is-there-a-way-to-detect-if-a-browser-window-is-not-currently-active
@@ -104,30 +105,18 @@ define([], function(){
 		,   h      = hidden
 		,   v      = "visible"
 		,   evtMap = { focus:v, focusin:v, pageshow:v, blur:h, focusout:h, pagehide:h }
-		,   state  = undefined
+		,   state  = null
 		;
 
-		// Standards:
-		if (hidden in document)
-			document.addEventListener("visibilitychange", onchange);
-		else if ((hidden = "mozHidden") in document)
-			document.addEventListener("mozvisibilitychange", onchange);
-		else if ((hidden = "webkitHidden") in document)
-			document.addEventListener("webkitvisibilitychange", onchange);
-		else if ((hidden = "msHidden") in document)
-			document.addEventListener("msvisibilitychange", onchange);
-		// IE 9 and lower:
-		else if ('onfocusin' in document)
-			document.onfocusin = document.onfocusout = onchange;
-		else // always -- other older SHOULD be a param?
-			window.onpageshow = window.onpagehide = window.onfocus = window.onblur = onchange;
-
 		function onchange (e) {
+			var target = e.target || e.currentTarget || e.srcElement;
 			e = e || window.event;
+
 			if (e.type in evtMap) {
 				state = evtMap[e.type];
 			} else {
-				state = (this[hidden]) ? h : v; // not so sure about this one
+				//state = (this[hidden]) ? h : v; // not so sure about this one
+				state = (document[hidden]) ? h : v; // not so sure about this one
 			}
 
 			console.log("window state: " + state);
@@ -135,25 +124,39 @@ define([], function(){
 			(state === h) && pause();
 			(state === v && !extPause) && start();
 		}
-		
+ 
+		// Standards:
+		if (hidden in document) {
+			document.addEventListener("visibilitychange", onchange);
+		} else if ((hidden = "mozHidden") in document) {
+			document.addEventListener("mozvisibilitychange", onchange);
+		} else if ((hidden = "webkitHidden") in document) {
+			document.addEventListener("webkitvisibilitychange", onchange);
+		} else if ((hidden = "msHidden") in document) {
+			document.addEventListener("msvisibilitychange", onchange);
+		} else if ('onfocusin' in document) { // IE 9 and lower:
+			document.onfocusin = document.onfocusout = onchange;
+		} else { // always -- other older SHOULD be a param?
+			window.onpageshow = window.onpagehide = window.onfocus = window.onblur = onchange;
+		}
 	})();
 
 	// shim layer with setTimeout fallback
 	var requestAnimFrame = (function(){
-		return  window.requestAnimationFrame       || 
-				window.webkitRequestAnimationFrame || 
-				window.mozRequestAnimationFrame    || 
-				window.oRequestAnimationFrame      || 
-				window.msRequestAnimationFrame     
+		return  window.requestAnimationFrame       ||
+				window.webkitRequestAnimationFrame ||
+				window.mozRequestAnimationFrame    ||
+				window.oRequestAnimationFrame      ||
+				window.msRequestAnimationFrame
 		;
 	})();
 	
 	var cancelAnimFrame = (function(){
-		return  window.cancelAnimationFrame              || 
-				window.webkitCancelRequestAnimationFrame || window.webkitCancelAnimationFrame || 
-				window.mozCancelRequestAnimationFrame    || window.mozCancelAnimationFrame    || 
-				window.oCancelRequestAnimationFrame      || window.oCancelAnimationFrame      || 
-				window.msCancelRequestAnimationFrame     || window.msRequestAnimationFrame     
+		return  window.cancelAnimationFrame              ||
+				window.webkitCancelRequestAnimationFrame || window.webkitCancelAnimationFrame ||
+				window.mozCancelRequestAnimationFrame    || window.mozCancelAnimationFrame    ||
+				window.oCancelRequestAnimationFrame      || window.oCancelAnimationFrame      ||
+				window.msCancelRequestAnimationFrame     || window.msRequestAnimationFrame
 		;
 	})();
 	
@@ -181,13 +184,13 @@ define([], function(){
 			pauseCallback = func;
 		},
 		rate:            function(func) {
-			return rate;  
+			return rate;
 		},
 		counter:         function() {
 			return frameCounter;
 		},
 		paused:          function() {
-			return paused;  
+			return paused;
 		},
 		start:           function() {
 			extPause = false;

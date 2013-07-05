@@ -1,5 +1,8 @@
 // TODO: CSS cleanup (use injected styles), joy function to create joysticks, touch function (pass subject ele + cb) 
-define([], function(){  
+/*global define,console*/
+define([], function() {
+	"use strict";
+
 	var ret      = {}
 	,   body     = document.getElementsByTagName('body')[0]
 	,   latch    = {} // currently pressed keys
@@ -12,7 +15,7 @@ define([], function(){
 		,   name       = opts.name     || (Math.random() * 1e10 >> 0).toString()
 		,   from       = opts.from     || 'topleft'
 		,   size       = opts.size     || 50
-		,   opacity    = opts.opacity  || .3
+		,   opacity    = opts.opacity  || 0.3
 		,   bgColor    = opts.bg       || 'white'
 		,   color      = opts.color    || 'black'
 		,   ele        = document.createElement('div')
@@ -25,7 +28,7 @@ define([], function(){
 		ele.style.position = 'absolute';
 		ele.style.width = size + 'px';
 		ele.style.height = size + 'px';
-		ele.style.lineHeight = size + 'px';                     
+		ele.style.lineHeight = size + 'px';
 		ele.style.textAlign = 'center';
 		ele.style.fontWeight = '800';
 		ele.style.fontSize = size + 'px';
@@ -67,14 +70,7 @@ define([], function(){
 	};
 
 	ret.getKeys = function() {
-		return keyLatch;
-	};
-	
-	ret.keyPressed = function(key) {
-		if(codes[key]) {
-			return latch[codes[key]];
-		}
-		return false;
+		return latch;
 	};
 	
 	ret.run = function() {

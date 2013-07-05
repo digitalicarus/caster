@@ -1,4 +1,7 @@
+/*global define*/
 define([], function () {
+	"use strict";
+
 	return {
 		// gameboy advance resolution :)
 		width: 240 * 2,
