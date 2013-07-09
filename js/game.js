@@ -15,7 +15,8 @@ define([
 		'keys',
 		'touch',
 		'level',
-		'player'
+		'player',
+		'cast'
 ], function (Shared, Wee, Keys, Touch, Level, Player) {
 	"use strict";
 
