@@ -22,12 +22,12 @@ define([], function () {
 				"Alternatively, a 'canvas' param/element.";
 		}
 
- 		if(params.canvas) {
- 			this.setCanvas(params.canvas);
+		if(params.canvas) {
+			this.setCanvas(params.canvas);
 		}
 		
 		this.cbuf          = {}; //  CAST BUFFER - avoid redeclaration per cast (unsure of declaration cost)
- 		this.unitShift     = params.unit + 1 || defaultUnit + 1;
+		this.unitShift     = params.unit + 1 || defaultUnit + 1;
 		this.unit          = 2 << (this.unitShift-1);
 		this.fov           = (params.fov) ? deg2Rad(params.fov) : deg2Rad(defaultFov);
 		this.halfFov       = this.fov / 2;
@@ -39,10 +39,13 @@ define([], function () {
 		this.halfFovOffset = this.numRays / 2|0;
 
 		this.castData = {
-			dist:   (tArr) ? new Float32Array(this.numRays) : new Array(this.numRays),
-			tile:   (tArr) ? new Uint8Array(this.numRays)   : new Array(this.numRays),
-			side:   (tArr) ? new Uint8Array(this.numRays)   : new Array(this.numRays),
-			offset: (tArr) ? new Uint8Array(this.numRays)   : new Array(this.numRays)
+			dist:     (tArr) ? new Float32Array(this.numRays) : new Array(this.numRays),
+			tile:     (tArr) ? new Uint8Array(this.numRays)   : new Array(this.numRays),
+			side:     (tArr) ? new Uint8Array(this.numRays)   : new Array(this.numRays),
+			offset:   (tArr) ? new Uint8Array(this.numRays)   : new Array(this.numRays),
+			x:        null,
+			y:        null,
+			angleIdx: null
 		};
 
 		// init
@@ -63,7 +66,7 @@ define([], function () {
 			this[funcs[f] + 'Tab']              = (tArr) ? new Float32Array(size) : new Array(size);
 			this['arc' + cap(funcs[f]) + 'Tab'] = (tArr) ? new Float32Array(size) : new Array(size);
 		}
-   	
+
 		for(i = 0, incr = 0; i < size; i++, incr += this.angleIncr) {
 			for(f in funcs) {
 				this[funcs[f] + 'Tab'][i] = Math[funcs[f]](incr);
@@ -73,21 +76,27 @@ define([], function () {
 	};
 
 	Caster.prototype.tileAt = function (x, y) {
-		try {
-			return this.lvl[y >> this.unitShift][x >> this.unitShift];
-		} catch (e) {
+		if (x < 0 || y < 0 || x > this.lvlWidth || y > this.lvlHeight) {
 			return undefined;
+		} else {
+			return this.lvl[y >> this.unitShift][x >> this.unitShift];
 		}
 	};
 
 	Caster.prototype.setCanvas = function (canvas) {
 		this.canvas = canvas;
+		this.ctx2d  = canvas.getContext('2d');
 		this.xRes   = canvas.width;
 		this.yRes   = canvas.height;
 	};
 
 	Caster.prototype.setLevelData = function (lvl) {
+		// TODO: try loading level data into a typed array -- profile reveals a lot of time in tileAt
 		this.lvl = lvl;
+		if (lvl instanceof Array) {
+			this.lvlHeight = lvl.length;
+			this.lvlWidth  = lvl[0].length;
+		}
 	};
 
 	Caster.prototype.angleToIdx = function (angle) {
@@ -100,6 +109,7 @@ define([], function () {
 	};
 
 	Caster.prototype.cast = function (params) {
+		// does shortcut allocation really mitigate the cost?
 		var c = this.cbuf; // short ref
 
 		c.i           = 0;
@@ -111,26 +121,9 @@ define([], function () {
 		c.normalizedX = c.x >> this.unitShift << this.unitShift; // "" 
 
 		// We'll do these LIVE >:D .. dynamically in the loop
-//		c.fishCorrect = null;
-//		c.tanRay      = null;
-//		c.tanRayInv   = null;
-//		c.sinRay      = null;
-//		c.sinRayInv   = null;
-//		c.cosRay      = null;
-//		c.cosRayInv   = null;
-//		c.horizYIncr  = null;
-//		c.vertXIncr   = null;
-//		c.horizXIncr  = null;
-//		c.vertYIncr   = null;
-//		c.horizStartY = null;
-//		c.vertStartX  = null;
-//		c.castY       = null;
-//		c.castX       = null;
-//		c.horizHit    = null;
-//		c.vertHit     = null;
-//		c.horizDist   = null;
-//		c.vertDist    = null;
-//		c.tmp         = null; // general purpose
+		// fishCorrect, tanRay, tanRayInv, sinRay, sinRayInv, cosRay, cosRayInv, horizYIncr,
+		// vertXIncr, horizXIncr, vertYIncr, horizStartY, vertStartX, castY, castX, horizHit,
+		// vertHit, horizDist, vertDist, tmp
 
 		// too costly to check? should offload into set methods and let this just crash and burn?
 		if (!this.lvl)   { throw "set 'levelData' upon construction or via setLevelData prior to cast"; }
@@ -138,16 +131,16 @@ define([], function () {
 		if (!c.x || !c.y)    { throw "cast must be passed a 'x' and 'y' location parameter"; }
         
         // TODO: change to zero compare decr loop
-        for (; c.i < this.numRays; c.i++) {
+		for (; c.i < this.numRays; c.i++) {
 			c.rayObj      = {};
-            c.tanRay      = this.tanTab[c.currRayIdx];
-            c.tanRayInv   = this.arcTanTab[c.currRayIdx]; // reciprocal mult is faster than divide in some browsers
-            c.sinRay      = this.sinTab[c.currRayIdx];
-            c.cosRay      = this.cosTab[c.currRayIdx];
-            c.vertHit     = null;
-            c.horizHit    = null;
-            c.tmp         = c.angleIdx - c.currRayIdx;
-            c.fishCorrect = this.cosTab[((c.tmp < 0) ? this.tableLength + c.tmp : c.tmp)]; // roll over 0
+			c.tanRay      = this.tanTab[c.currRayIdx];
+			c.tanRayInv   = this.arcTanTab[c.currRayIdx]; // reciprocal mult is faster than divide in some browsers
+			c.sinRay      = this.sinTab[c.currRayIdx];
+			c.cosRay      = this.cosTab[c.currRayIdx];
+			c.vertHit     = null;
+			c.horizHit    = null;
+			c.tmp         = c.angleIdx - c.currRayIdx;
+			c.fishCorrect = this.cosTab[((c.tmp < 0) ? this.tableLength + c.tmp : c.tmp)]; // roll over 0
 
 			c.horizYIncr  = (c.sinRay > 0) ? -this.unit : this.unit; // casting up - negative Y 
 			c.vertXIncr   = (c.cosRay > 0) ? this.unit : -this.unit;  // castingright - positive X
@@ -158,8 +151,8 @@ define([], function () {
 			c.castY = c.horizStartY;
 			c.castX = c.x + (c.y - c.castY) * c.tanRayInv; // chance to divide by 0 FIXME
 
-			if (this.tileAt(c.castX, c.castY) > 0) {
-				c.horizHit = { x: c.castX, y: c.castY };
+			if (c.tmp = this.tileAt(c.castX, c.castY) > 0) {
+				c.horizHit = { x: c.castX, y: c.castY, t: c.tmp };
 			} else {
 				c.horizXIncr = (c.horizYIncr < 0) ? this.unit * c.tanRayInv : -this.unit * c.tanRayInv;
 
@@ -170,8 +163,8 @@ define([], function () {
 						&& !c.horizHit) {
 					c.castY += c.horizYIncr;
 					c.castX += c.horizXIncr;
-					if (this.tileAt(c.castX, c.castY) > 0) {
-						c.horizHit = { x: c.castX, y: c.castY };
+					if (c.tmp = this.tileAt(c.castX, c.castY) > 0) {
+						c.horizHit = { x: c.castX, y: c.castY, t: c.tmp };
 						break;
 					}
 				}
@@ -189,8 +182,8 @@ define([], function () {
 			c.castX = c.vertStartX;
 			c.castY = c.y + (c.x - c.castX) * c.tanRay;
 
-			if (this.tileAt(c.castX, c.castY) > 0) {
-				c.vertHit = { x: c.castX, y: c.castY };
+			if (c.tmp = this.tileAt(c.castX, c.castY) > 0) {
+				c.vertHit = { x: c.castX, y: c.castY, t: c.tmp };
 			} else {
 				c.vertYIncr = (c.vertXIncr < 0) ? this.unit * c.tanRay : -this.unit * c.tanRay;
 
@@ -201,8 +194,8 @@ define([], function () {
 						&& !c.vertHit) {
 					c.castX += c.vertXIncr;
 					c.castY += c.vertYIncr;
-					if (this.tileAt(c.castX, c.castY) > 0) {
-						c.vertHit = { x: c.castX, y: c.castY };
+					if (c.tmp = this.tileAt(c.castX, c.castY) > 0) {
+						c.vertHit = { x: c.castX, y: c.castY, t: c.tmp };
 					}
 				}
 			}
@@ -213,12 +206,14 @@ define([], function () {
 			
 			if (c.vertDist < c.horizDist) {
 				this.castData.dist[c.i]   = c.vertDist;
-				this.castData.tile[c.i]   = this.tileAt(c.vertHit.x, c.vertHit.y);
+				//this.castData.tile[c.i]   = this.tileAt(c.vertHit.x, c.vertHit.y);
+				this.castData.tile[c.i]   = c.vertHit.t;
 				this.castData.side[c.i]   = 0; // 0 vert 1 horiz, TODO: 0 top 1 right 2 left 3 bottom
 				this.castData.offset[c.i] = c.vertDist % this.unit; 
 			} else {
 				this.castData.dist[c.i]   = c.horizDist;
-				this.castData.tile[c.i]   = this.tileAt(c.horizHit.x, c.horizHit.y);
+				//this.castData.tile[c.i]   = this.tileAt(c.horizHit.x, c.horizHit.y);
+				this.castData.tile[c.i]   = c.horizHit.t;
 				this.castData.side[c.i]   = 0; // 0 horiz 1 horiz, TODO: 0 top 1 right 2 left 3 bottom
 				this.castData.offset[c.i] = c.horizDist % this.unit;
 			}
@@ -227,14 +222,46 @@ define([], function () {
 			if (c.currRayIdx < 0) { c.currRayIdx = this.tableLength - 1; }
 		}
 
-		return this.castData; 
+ 		return this.castData; 
 	};
 
 	Caster.prototype.draw2d = function (params) {
+		var c = this.cbuf; // short ref
+		params = params || 1;
+
+		c.w  = params.w || params.width  || 10; // game units
+		c.h  = params.h || params.height || 8;  // game units
+		c.s  = params.s || params.scale  || 0.1;  // game units
+		c.cx = params.x || params.cx     || 0;
+		c.cy = params.y || params.cy     || 0;
+
+		c.wstart = c.x>>this.unitShift - c.w>>1;
+		c.hstart = c.y>>this.unitShift - c.h>>1;
+		c.wend   = c.wstart + c.w;
+		c.hend   = c.hstart + c.h;
+
+		this.ctx2d.save();
+		this.ctx2d.scale(c.s, c.s);
+		this.ctx2d.strokeStyle = "white";
+		this.ctx2d.strokeStyle = "#b0b0ff";
+		this.ctx2d.lineWidth = 1/c.s;
+
+		for ( c.i = 0; c.hstart < c.hend; c.i++, c.hstart++ ) {
+			for ( c.j = 0; c.wstart < c.wend; c.j++, c.wstart++ ) {
+				if (this.tileAt(c.wstart, c.hstart)) {
+					this.ctx2d.strokeRect(c.j<<this.unitShift + c.cx, c.i<<this.unitShift + c.cy, this.unit, this.unit);
+					this.ctx2d.fillRect(c.j<<this.unitShift + c.cx, c.i<<this.unitShift + c.cy, this.unit, this.unit);
+				}
+			}
+		}
+
+		this.ctx2d.restore();
+
 	};
 
 	Caster.prototype.draw3d = function (params) {
 	};
 
 	window.Caster = Caster;
+	return Caster;
 });
