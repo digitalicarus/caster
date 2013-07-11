@@ -75,13 +75,21 @@ define([], function () {
 		} 	
 	};
 
-	Caster.prototype.tileAt = function (x, y) {
-		if (x < 0 || y < 0 || x > this.lvlWidth || y > this.lvlHeight) {
+	Caster.prototype.tileAtPx = function (x, y) {
+		if (x < 0 || y < 0 || x >= this.lvlWidthPx || y >= this.lvlHeightPx) {
 			return undefined;
 		} else {
 			return this.lvl[y >> this.unitShift][x >> this.unitShift];
 		}
 	};
+
+	Caster.prototype.tileAt = function (x, y) {
+		if (x < 0 || y < 0 || x >= this.lvlWidth || y >= this.lvlHeight) {
+			return undefined;
+		} else {
+			return this.lvl[y][x];
+		}
+	}; 
 
 	Caster.prototype.setCanvas = function (canvas) {
 		this.canvas = canvas;
@@ -91,11 +99,13 @@ define([], function () {
 	};
 
 	Caster.prototype.setLevelData = function (lvl) {
-		// TODO: try loading level data into a typed array -- profile reveals a lot of time in tileAt
+		// TODO: try loading level data into a typed array -- profile reveals a lot of time in tileAtPx
 		this.lvl = lvl;
 		if (lvl instanceof Array) {
 			this.lvlHeight = lvl.length;
 			this.lvlWidth  = lvl[0].length;
+			this.lvlHeightPx = this.lvlHeight<<this.unitShift;
+			this.lvlWidthPx  = this.lvlWidth<<this.unitShift;
 		}
 	};
 
@@ -151,7 +161,7 @@ define([], function () {
 			c.castY = c.horizStartY;
 			c.castX = c.x + (c.y - c.castY) * c.tanRayInv; // chance to divide by 0 FIXME
 
-			if (c.tmp = this.tileAt(c.castX, c.castY) > 0) {
+			if (c.tmp = this.tileAtPx(c.castX, c.castY) > 0) {
 				c.horizHit = { x: c.castX, y: c.castY, t: c.tmp };
 			} else {
 				c.horizXIncr = (c.horizYIncr < 0) ? this.unit * c.tanRayInv : -this.unit * c.tanRayInv;
@@ -163,7 +173,7 @@ define([], function () {
 						&& !c.horizHit) {
 					c.castY += c.horizYIncr;
 					c.castX += c.horizXIncr;
-					if (c.tmp = this.tileAt(c.castX, c.castY) > 0) {
+					if (c.tmp = this.tileAtPx(c.castX, c.castY) > 0) {
 						c.horizHit = { x: c.castX, y: c.castY, t: c.tmp };
 						break;
 					}
@@ -182,7 +192,7 @@ define([], function () {
 			c.castX = c.vertStartX;
 			c.castY = c.y + (c.x - c.castX) * c.tanRay;
 
-			if (c.tmp = this.tileAt(c.castX, c.castY) > 0) {
+			if (c.tmp = this.tileAtPx(c.castX, c.castY) > 0) {
 				c.vertHit = { x: c.castX, y: c.castY, t: c.tmp };
 			} else {
 				c.vertYIncr = (c.vertXIncr < 0) ? this.unit * c.tanRay : -this.unit * c.tanRay;
@@ -194,7 +204,7 @@ define([], function () {
 						&& !c.vertHit) {
 					c.castX += c.vertXIncr;
 					c.castY += c.vertYIncr;
-					if (c.tmp = this.tileAt(c.castX, c.castY) > 0) {
+					if (c.tmp = this.tileAtPx(c.castX, c.castY) > 0) {
 						c.vertHit = { x: c.castX, y: c.castY, t: c.tmp };
 					}
 				}
@@ -206,13 +216,11 @@ define([], function () {
 			
 			if (c.vertDist < c.horizDist) {
 				this.castData.dist[c.i]   = c.vertDist;
-				//this.castData.tile[c.i]   = this.tileAt(c.vertHit.x, c.vertHit.y);
 				this.castData.tile[c.i]   = c.vertHit.t;
 				this.castData.side[c.i]   = 0; // 0 vert 1 horiz, TODO: 0 top 1 right 2 left 3 bottom
 				this.castData.offset[c.i] = c.vertDist % this.unit; 
 			} else {
 				this.castData.dist[c.i]   = c.horizDist;
-				//this.castData.tile[c.i]   = this.tileAt(c.horizHit.x, c.horizHit.y);
 				this.castData.tile[c.i]   = c.horizHit.t;
 				this.castData.side[c.i]   = 0; // 0 horiz 1 horiz, TODO: 0 top 1 right 2 left 3 bottom
 				this.castData.offset[c.i] = c.horizDist % this.unit;
@@ -222,7 +230,7 @@ define([], function () {
 			if (c.currRayIdx < 0) { c.currRayIdx = this.tableLength - 1; }
 		}
 
- 		return this.castData; 
+		return this.castData; 
 	};
 
 	Caster.prototype.draw2d = function (params) {
@@ -235,25 +243,45 @@ define([], function () {
 		c.cx = params.x || params.cx     || 0;
 		c.cy = params.y || params.cy     || 0;
 
-		c.wstart = c.x>>this.unitShift - c.w>>1;
-		c.hstart = c.y>>this.unitShift - c.h>>1;
+		c.wstart = c.tileX = (c.x>>this.unitShift) - (c.w>>1);
+		c.hstart = c.tileY = (c.y>>this.unitShift) - (c.h>>1);
 		c.wend   = c.wstart + c.w;
 		c.hend   = c.hstart + c.h;
+		c.px2d   = c.cx + (c.w>>1<<this.unitShift) + c.x % this.unit;
+		c.py2d   = c.cy + (c.h>>1<<this.unitShift) + c.y % this.unit;
 
 		this.ctx2d.save();
+
 		this.ctx2d.scale(c.s, c.s);
+		// backdrop
+        this.ctx2d.fillStyle = "#666";
+        this.ctx2d.fillRect(c.cx, c.cy, c.w<<this.unitShift, c.h<<this.unitShift);
+
+		// level
 		this.ctx2d.strokeStyle = "white";
-		this.ctx2d.strokeStyle = "#b0b0ff";
+		this.ctx2d.fillStyle   = "#288";
 		this.ctx2d.lineWidth = 1/c.s;
 
-		for ( c.i = 0; c.hstart < c.hend; c.i++, c.hstart++ ) {
-			for ( c.j = 0; c.wstart < c.wend; c.j++, c.wstart++ ) {
-				if (this.tileAt(c.wstart, c.hstart)) {
-					this.ctx2d.strokeRect(c.j<<this.unitShift + c.cx, c.i<<this.unitShift + c.cy, this.unit, this.unit);
-					this.ctx2d.fillRect(c.j<<this.unitShift + c.cx, c.i<<this.unitShift + c.cy, this.unit, this.unit);
+		for ( c.i = 0; c.tileY < c.hend; c.i++, c.tileY++ ) {
+			for ( c.j = 0; c.tileX < c.wend; c.j++, c.tileX++ ) {
+				if (this.tileAt(c.tileX, c.tileY)) {
+					this.ctx2d.strokeRect((c.j<<this.unitShift) + c.cx, (c.i<<this.unitShift) + c.cy, this.unit, this.unit);
+					this.ctx2d.fillRect((c.j<<this.unitShift) + c.cx, (c.i<<this.unitShift) + c.cy, this.unit, this.unit);
 				}
 			}
+			c.tileX = c.wstart;
 		}
+
+		// player
+		this.ctx2d.strokeStyle = "red";
+		this.ctx2d.fillStyle   = "red";
+		this.ctx2d.lineWidth   >>= 1;
+		this.ctx2d.fillRect(c.px2d, c.py2d, this.unit>>2, this.unit>>2);
+		this.ctx2d.beginPath();
+		this.ctx2d.moveTo(c.px2d, c.py2d);
+		this.ctx2d.lineTo(c.px2d + (this.unit<<1) * this.cosTab[c.angleIdx], c.py2d + (this.unit<<1) * -this.sinTab[c.angleIdx]);
+		this.ctx2d.stroke();
+		this.ctx2d.closePath();
 
 		this.ctx2d.restore();
 
