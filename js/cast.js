@@ -140,7 +140,7 @@ define([], function () {
 		if (!c.angleIdx)        { throw "cast must be passed a 'angle' parameter"; }
 		if (!c.x || !c.y)    { throw "cast must be passed a 'x' and 'y' location parameter"; }
         
-        // TODO: change to zero compare decr loop
+		// TODO: change to zero compare decr loop
 		for (; c.i < this.numRays; c.i++) {
 			c.rayObj      = {};
 			c.tanRay      = this.tanTab[c.currRayIdx];
@@ -254,8 +254,8 @@ define([], function () {
 
 		this.ctx2d.scale(c.s, c.s);
 		// backdrop
-        this.ctx2d.fillStyle = "#666";
-        this.ctx2d.fillRect(c.cx, c.cy, c.w<<this.unitShift, c.h<<this.unitShift);
+		this.ctx2d.fillStyle = "#666";
+		this.ctx2d.fillRect(c.cx, c.cy, c.w<<this.unitShift, c.h<<this.unitShift);
 
 		// level
 		this.ctx2d.strokeStyle = "white";
