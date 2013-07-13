@@ -237,26 +237,44 @@ define([], function () {
 		var c = this.cbuf; // short ref
 		params = params || 1;
 
-		c.w  = params.w || params.width  || 10; // game units
-		c.h  = params.h || params.height || 8;  // game units
+		c.w  = c.wclip = params.w || params.width  || 10; // game units
+		c.h  = c.hclip = params.h || params.height || 8;  // game units
 		c.s  = params.s || params.scale  || 0.1;  // game units
+		c.ca = params.a || params.alpha  || 0.5;
 		c.cx = params.x || params.cx     || 0;
 		c.cy = params.y || params.cy     || 0;
 
+		// render 1 beyond clipped area
+		c.w += 1;
+		c.h += 1;
+
+		//TODO: adjust start and end for canvas boundaries to avoid undue iterations below
+		//TODO: save refs to pixel and tile versions of variables and stop all the needless shift dupes
 		c.wstart = c.tileX = (c.x>>this.unitShift) - (c.w>>1);
 		c.hstart = c.tileY = (c.y>>this.unitShift) - (c.h>>1);
 		c.wend   = c.wstart + c.w;
 		c.hend   = c.hstart + c.h;
-		c.px2d   = c.cx + (c.w>>1<<this.unitShift) + c.x % this.unit;
-		c.py2d   = c.cy + (c.h>>1<<this.unitShift) + c.y % this.unit;
+		c.px2d   = c.cx + (c.w>>1<<this.unitShift);
+		c.py2d   = c.cy + (c.h>>1<<this.unitShift);
 
+		// setup context
 		this.ctx2d.save();
 
 		this.ctx2d.scale(c.s, c.s);
+		this.ctx2d.globalAlpha = c.ca;
+
+		// clip
+		this.ctx2d.beginPath();
+		this.ctx2d.moveTo(c.cx, c.cy);
+		this.ctx2d.lineTo(c.wclip<<this.unitShift, c.cy);
+		this.ctx2d.lineTo(c.wclip<<this.unitShift, c.hclip<<this.unitShift);
+		this.ctx2d.lineTo(c.cx, c.hclip<<this.unitShift);
+		this.ctx2d.clip();
+
 		// backdrop
 		this.ctx2d.fillStyle = "#666";
-		this.ctx2d.fillRect(c.cx, c.cy, c.w<<this.unitShift, c.h<<this.unitShift);
-
+		this.ctx2d.fillRect(c.cx, c.cy, c.w<<this.unitShift, c.hclip<<this.unitShift);
+ 
 		// level
 		this.ctx2d.strokeStyle = "white";
 		this.ctx2d.fillStyle   = "#288";
@@ -265,8 +283,8 @@ define([], function () {
 		for ( c.i = 0; c.tileY < c.hend; c.i++, c.tileY++ ) {
 			for ( c.j = 0; c.tileX < c.wend; c.j++, c.tileX++ ) {
 				if (this.tileAt(c.tileX, c.tileY)) {
-					this.ctx2d.strokeRect((c.j<<this.unitShift) + c.cx, (c.i<<this.unitShift) + c.cy, this.unit, this.unit);
-					this.ctx2d.fillRect((c.j<<this.unitShift) + c.cx, (c.i<<this.unitShift) + c.cy, this.unit, this.unit);
+					this.ctx2d.strokeRect((c.j<<this.unitShift) + c.cx - c.x%this.unit, (c.i<<this.unitShift) + c.cy - c.y%this.unit, this.unit, this.unit);
+					this.ctx2d.fillRect((c.j<<this.unitShift) + c.cx - c.x%this.unit, (c.i<<this.unitShift) + c.cy - c.y%this.unit, this.unit, this.unit);
 				}
 			}
 			c.tileX = c.wstart;
