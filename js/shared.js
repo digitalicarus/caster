@@ -20,8 +20,8 @@ define(['config',
 	,   canvas        = createEle('canvas')
 	,   ctx           = canvas.getContext('2d')
 	,   isMobile      = checkMobile()
-	,   canvasWidth   = (!isMobile) ? config.width : (config.width >> 1) >>0
-	,   canvasHeight  = (!isMobile) ? config.height : (config.height >> 1) >>0
+	,   canvasWidth   = (!isMobile) ? config.width : (config.width >>2) >>0
+	,   canvasHeight  = (!isMobile) ? config.height : (config.height >>2) >>0
 	,   assetType = {
 			img: ['png','gif','jpeg',],
 			audio: ['ogg', 'mp3', 'wav']
