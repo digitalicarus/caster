@@ -13,6 +13,7 @@ define([], function(){
 		,   "right":  39
 		,   "enter":  13
 		,   "escape": 27
+		,   "shift":  16
 		,   w:        87
 		,   a:        65
 		,   s:        83

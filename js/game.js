@@ -20,13 +20,13 @@ define([
 ], function (Shared, Wee, Keys, Touch, Level, Player, Caster) {
 	"use strict";
 
-	var textureSrc         = 'img/terrain.png'
+	var textureSrc         = 'img/smooth.png'  //'img/superHDpackdisplay.png'//'img/terrain.png'
 	,   sky                = Shared.ctx.createLinearGradient(0, 0, 0, Shared.canvas.height >> 1)
 	,   floor              = Shared.ctx.createLinearGradient(0, Shared.canvas.height >> 1, 0, Shared.canvas.height)
 	,   mobileCtrlSize     = (Shared.canvas.width / 6) >> 0
 	,   unitShift          = 6
 	,   unit               = 2<<(unitShift-1)
-    ,   caster             = new Caster({canvas: Shared.canvas, unit: unitShift-1})
+    ,   caster             = new Caster({canvas: Shared.canvas, unit: unitShift-1, stripShift: Shared.stripShift})
     ,   player             = null
 	;
 
@@ -63,7 +63,10 @@ define([
 	Keys.on('e', function () {
 		player.strafeRight();
 	});
-
+	Keys.on('shift', function () {
+		player.toggleRun();
+	});
+ 
     document.body.addEventListener('keyup',   function(e) {
 		var code = e.which || e.keyCode || e.key;
 		//console.log("keyup: "+code);
@@ -78,13 +81,21 @@ define([
 
 	if(Shared.isMobile) {
 		Shared.controlsEle.appendChild(Touch.button({
+			symbol: '!',
+			size: mobileCtrlSize,
+			right: 5,
+			top: 5
+		}, function () {
+			player.toggleRun();
+		}));
+		Shared.controlsEle.appendChild(Touch.button({
 			symbol: '&#9668;',
 			size: mobileCtrlSize,
 			left: 5,
 			bottom: mobileCtrlSize/1.2
 		}, function () {
 			player.strafeLeft();
-		}));
+		})); 
 		Shared.controlsEle.appendChild(Touch.button({
 			symbol: '&#9658;',
 			size: mobileCtrlSize,
@@ -149,7 +160,7 @@ define([
 
 		caster.draw3d();
 		if(!Shared.isMobile) {
-			caster.draw2d({w: 20, h: 20, x: 80, y: 80, s: 0.2});
+			caster.draw2d({w: 20, h: 20, x: 80, y: 80, s: 0.1});
 		} else {
 			caster.draw2d({w: 20, h: 20, x: 80, y: 80, s: 0.05});
 		}
@@ -158,7 +169,7 @@ define([
 	});
    
 	Shared.loadAssets([textureSrc], function () {
-		caster.setTexture(Shared.assets[textureSrc]);
+		caster.setTexture({src: Shared.assets[textureSrc], shift: Shared.texShift, scale: Shared.texScale});
 		Wee.start();
 	});
 });

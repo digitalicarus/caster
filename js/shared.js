@@ -20,8 +20,12 @@ define(['config',
 	,   canvas        = createEle('canvas')
 	,   ctx           = canvas.getContext('2d')
 	,   isMobile      = checkMobile()
-	,   canvasWidth   = (!isMobile) ? config.width : (config.width >>2) >>0
-	,   canvasHeight  = (!isMobile) ? config.height : (config.height >>2) >>0
+	,   mobileScale   = 0.5
+	,   canvasWidth   = (!isMobile) ? config.width : (config.width * mobileScale)|0
+	,   canvasHeight  = (!isMobile) ? config.height : (config.height * mobileScale)|0
+	,   stripShift    = (!isMobile) ? 0 : 1
+	,   texShift      = (!isMobile) ? 6 : 5
+	,   texScale      = (!isMobile) ? 1 : 0.5
 	,   assetType = {
 			img: ['png','gif','jpeg',],
 			audio: ['ogg', 'mp3', 'wav']
@@ -157,6 +161,9 @@ define(['config',
 		degToRad: degToRad,
 		radToDeg: radToDeg,
 		loadAssets: loadAssets,
+		stripShift: stripShift,
+		texShift: texShift,
+		texScale: texScale,
 		halfPI: Math.PI / 2,
 		twoPI: 2*Math.PI,
 		threePI: 3*Math.PI,

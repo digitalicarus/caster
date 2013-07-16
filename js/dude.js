@@ -33,6 +33,16 @@ define(['shared'], function(Shared) {
 			this.x -= this.moveSpeed * Math.cos(this.angle);
 			this.y -= this.moveSpeed * -Math.sin(this.angle);
 		},
+		toggleRun: function() {
+			if (this.running) {
+				this.running = false;
+				this.moveSpeed = 5;
+			} else {
+				this.running = true;
+				this.moveSpeed = 11;
+			}
+		},
+		running: false,
 		moveSpeed: 5,        // pixels per tick
 		rotSpeed: Math.PI/80 // radians per tick - 30 frames to turn 180deg 
 	});

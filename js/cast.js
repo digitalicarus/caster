@@ -33,17 +33,13 @@ define([], function () {
 		if(params.canvas) {
 			this.setCanvas(params.canvas);
 		}
-
-		if(params.texture) {
-			this.setTexture(params.texture);
-		}
-
+ 
 		// set draw func from proto -- may be replaced after examining params / subsequent sets
 		this.draw3d = this.draw3dMin; 
 		
 		this.cbuf          = {}; //  CAST BUFFER - avoid redeclaration per cast (unsure of declaration cost)
 		this.unitShift     = params.unit + 1 || defaultUnit + 1;
-		this.unit          = 2 << (this.unitShift-1);
+		this.unit          = 1 << this.unitShift;
 		this.fov           = (params.fov) ? deg2Rad(params.fov) : deg2Rad(defaultFov);
 		this.halfFov       = this.fov / 2;
 
@@ -68,6 +64,9 @@ define([], function () {
 		this.frustDist     = (this.xRes>>1) / Math.tan(this.halfFov);
 		this.projFactor    = this.unit * this.frustDist; // factor to multiply by distance for 3d projection
 
+		this.textureShift  = this.unitShift;
+		this.texOffsetMod  = 1<<this.textureShift;
+
 		this.castData = {
 			dist:     (tArr) ? new Float32Array(this.numRays) : new Array(this.numRays),
 			tile:     (tArr) ? new Uint8Array(this.numRays)   : new Array(this.numRays),
@@ -76,7 +75,8 @@ define([], function () {
 		};
 
 		// init
-		this.setLevelData(params.lvl || params.level || params.levelData || null);
+		(params.texture) ? this.setTexture(params.texture) : this.setTextureDeets({});
+  		this.setLevelData(params.lvl || params.level || params.levelData || null);
 		this._genTrigTables();
 	};
 
@@ -130,13 +130,53 @@ define([], function () {
 		return this.canvas;
 	};
 
-	Caster.prototype.setTexture = function (imgSrc) {
-		this.textureImgSrc = imgSrc;
+	Caster.prototype.setTexture = function (params) {
+		var src = null
+		,   deets = null
+		;
+		console.log(typeof params);
+		if (params && params.hasOwnProperty('nodeName') && params.nodeName.match(/img/i)) {
+			src = params;
+		}
+		else if (!params || !params.src) {
+			throw "setTexture minimally requires a 'src' parameter member";
+		} else {
+			src = params.src;
+		}
+
+		deets = this.setTextureDeets({
+			shift: params.shift + 1 || params.textureShift + 1, 
+			scale: params.scaleShift || params.scale || params.s || 1
+		});
+		if (deets.scale !== 1) {
+			this.textureSrc = this.createTextureBuffer(src);
+			this.textureSrc.getContext('2d').drawImage(
+					src,
+					0,
+					0,
+					src.width,
+					src.height,
+					0,
+					0,
+					src.width * deets.scale,
+					src.height * deets.scale
+			);
+
+		} else {
+			this.textureSrc = src;
+		}
 		this.draw3d = this.draw3dTexture;
 	};
 
+	Caster.prototype.setTextureDeets = function (params) {
+		this.textureShift = params.shift || this.unitShift;
+		this.texOffsetMod  = (1<<this.textureShift)/(1<<this.unitShift);
+		this.texScale = params.scale;
+		return {shift: this.textureShift, scale: this.texScale};
+	};
+
 	Caster.prototype.unsetTexture = function () {
-		this.textureImgSrc = null;
+		this.textureSrc = null;
 		this.draw3d = this.draw3dMin;
 	};
 
@@ -144,16 +184,21 @@ define([], function () {
 		this.draw3d = this.draw3dMin;
 	};
 
+	Caster.prototype.createTextureBuffer = function (srcEle) {
+		var buf = document.createElement('canvas');
+		//TODO: measure image
+		buf.height = srcEle.height;
+		buf.width = srcEle.width;
+		return buf;
+	};
+
 	Caster.prototype.setLighting = function (onOff) {
 		this.lighting = onOff;
-		if (this.lighting && this.textureImgSrc) {
-			if (!this.texBuf) {
-				this.texBuf = document.createElement('canvas');
+		if (this.lighting && this.textureSrc) {
+			if (!this.tex) {
+				this.texBuf = this.createTextureBuffer(this.textureSrc);
 				this.texBufCtx = this.texBuf.getContext('2d');
-				//TODO: measure image
-				this.texBuf.height = 1024;
-				this.texBuf.width = 1024;
-				this.texBufCtx.drawImage(this.textureImgSrc, 0, 0);
+				this.texBufCtx.drawImage(this.textureSrc, 0, 0);
 			}
 			if (!this.blitBuf) {
 				this.blitBuf = document.createElement('canvas');
@@ -161,7 +206,7 @@ define([], function () {
 			}
 			this.lightFactor = this.unit << 7;
 			this.draw3d = this.draw3dTextureLighting;
-		} else if (this.textureImgSrc) {
+		} else if (this.textureSrc) {
 			this.draw3d = this.draw3dTexture;
 		} else {
 			this.draw3d = this.draw3dMin;
@@ -194,7 +239,7 @@ define([], function () {
 		var c = this.cbuf; // short ref
 
 		c.i           = 0;
-		c.angleIdx    = (params.angle) ? this.angleToIdx(params.angle) : null;
+		c.angleIdx    = (params.hasOwnProperty('angle')) ? this.angleToIdx(params.angle) : null;
 		c.x           = params.x || null;
 		c.y           = params.y || null;
 		c.currRayIdx  = (c.angleIdx + this.halfFovOffset) % this.tableLength; // roll over
@@ -207,9 +252,9 @@ define([], function () {
 		// vertHit, horizDist, vertDist, tmp
 
 		// too costly to check? should offload into set methods and let this just crash and burn?
-		if (!this.lvl)   { throw "set 'levelData' upon construction or via setLevelData prior to cast"; }
-		if (!c.angleIdx)        { throw "cast must be passed a 'angle' parameter"; }
-		if (!c.x || !c.y)    { throw "cast must be passed a 'x' and 'y' location parameter"; }
+		if (!this.lvl)    { throw "set 'levelData' upon construction or via setLevelData prior to cast"; }
+		if (!c.angleIdx)  { throw "cast must be passed a 'angle' parameter"; }
+		if (!c.x || !c.y) { throw "cast must be passed a 'x' and 'y' location parameter"; }
         
 		// TODO: change to zero compare decr loop
 		for (; c.i < this.numRays; c.i++) {
@@ -290,12 +335,12 @@ define([], function () {
 				this.castData.dist[c.i]   = c.vertDist * c.fishCorrect;
 				this.castData.tile[c.i]   = c.vertHit.t;
 				this.castData.side[c.i]   = DIRECTION.VERT; // 0 vert 1 horiz, TODO: 0 top 1 right 2 bottom 3 left
-				this.castData.offset[c.i] = c.vertHit.y % this.unit; 
+				this.castData.offset[c.i] = (c.vertHit.y % this.unit) * this.texOffsetMod|0; 
 			} else {
 				this.castData.dist[c.i]   = c.horizDist * c.fishCorrect;
 				this.castData.tile[c.i]   = c.horizHit.t;
 				this.castData.side[c.i]   = DIRECTION.HORIZ; // 0 vert 1 horiz, TODO: 0 top 1 right 2 bottom 3 left
-				this.castData.offset[c.i] = c.horizHit.x % this.unit;
+				this.castData.offset[c.i] = (c.horizHit.x % this.unit) * this.texOffsetMod|0;
 			}
 
 			c.currRayIdx -= this.stripWidth;
@@ -434,11 +479,11 @@ define([], function () {
 		for( c.i = 0; c.i < this.numRays; c.i++ ) {
 			c.stripHeight = this.projFactor / this.castData.dist[c.i];
 			this.ctx2d.drawImage(
-					this.textureImgSrc,
-					((this.castData.tile[c.i] << this.unitShift) + this.castData.offset[c.i]),
+					this.textureSrc,
+					((this.castData.tile[c.i] << this.textureShift) + this.castData.offset[c.i]),
 					0,
 					1, //stripWidth, //try sampling the whole strip width - hmm, looks weird, stick with 1px for now
-					this.unit,
+					1<<this.textureShift,
 					c.i<<this.stripShift,
 					this.halfYRes - c.stripHeight / 2,
 					this.stripWidth,
@@ -468,7 +513,7 @@ define([], function () {
 
 		function drawWithLighting(i, stripHeight) {
 			that.blitScale(
-				that.textureImgSrc,
+				that.textureSrc,
 				((that.castData.tile[c.i] << that.unitShift) + that.castData.offset[c.i]),
 				0,
 				1, //stripWidth, //try sampling the whole strip width - hmm, looks weird, stick with 1px for now
