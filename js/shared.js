@@ -23,7 +23,7 @@ define(['config',
 	,   mobileScale   = 0.5
 	,   canvasWidth   = (!isMobile) ? config.width : (config.width * mobileScale)|0
 	,   canvasHeight  = (!isMobile) ? config.height : (config.height * mobileScale)|0
-	,   stripShift    = (!isMobile) ? 0 : 1
+	,   stripShift    = (!isMobile) ? 1 : 1
 	,   texShift      = (!isMobile) ? 6 : 5
 	,   texScale      = (!isMobile) ? 1 : 0.5
 	,   assetType = {

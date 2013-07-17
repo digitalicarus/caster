@@ -202,6 +202,9 @@ define([], function () {
 			}
 			if (!this.blitBuf) {
 				this.blitBuf = document.createElement('canvas');
+				this.blitBuf.height = this.canvas.height<<2;
+				this.blitBuf.width = this.stripWidth;
+
 				this.blitBufCtx = this.blitBuf.getContext('2d');
 			}
 			this.lightFactor = this.unit << 7;
@@ -425,7 +428,7 @@ define([], function () {
 	};
 
 	// this could probably go in a separate utility module... but then we couldn't use our massive c buffer
-	Caster.prototype.blitScale = function (tex, tX, tY, tW, tH, dst, dX, dY, dW, dH, filter) {
+	Caster.prototype.blitScale = function (tX, tY, tW, tH, dX, dY, dW, dH, filter) {
 		var c = this.cbuf;
 
 		c.scaleX = dW/tW;
@@ -500,10 +503,10 @@ define([], function () {
 
 		function lightMyFire(data) {
 			c.j = 0;
-			c.light = (this.lightFactor) / (this.castData.dist[c.i] * (this.castData.dist[c.i]>>1));
+			c.light = (that.lightFactor) / (that.castData.dist[c.i] * (that.castData.dist[c.i]>>1));
 				
 			while(c.j<data.data.length) {
-				while(i%4!==3) {
+				while(c.j%4!==3) {
 					data.data[c.j++] *= c.light;
 				}
 				c.j++;
@@ -511,25 +514,21 @@ define([], function () {
 			return data;
 		}
 
-		function drawWithLighting(i, stripHeight) {
-			that.blitScale(
-				that.textureSrc,
-				((that.castData.tile[c.i] << that.unitShift) + that.castData.offset[c.i]),
-				0,
-				1, //stripWidth, //try sampling the whole strip width - hmm, looks weird, stick with 1px for now
-				that.unit,
-				c.i<<that.stripShift,
-				that.halfYRes - c.stripHeight / 2,
-				that.stripWidth,
-				c.stripHeight,
-				lightMyFire
-			);
-		}
 		this.ctx2d.save();
 
 		for( c.i = 0; c.i < this.numRays; c.i++ ) {
 			c.stripHeight = this.projFactor / this.castData.dist[c.i];
-			drawWithLighting(); // it's all in cBuf... so no params y'all
+			this.blitScale(
+				((this.castData.tile[c.i] << this.textureShift) + this.castData.offset[c.i]),
+				0,
+				1, //stripWidth, //try sampling the whole strip width - hmm, looks weird, stick with 1px for now
+				1<<this.textureShift,
+				c.i<<this.stripShift,
+				this.halfYRes - c.stripHeight / 2,
+				this.stripWidth,
+				c.stripHeight,
+				lightMyFire    
+			);
 		}
 		this.ctx2d.restore();
 	};
